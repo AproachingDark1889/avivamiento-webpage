@@ -1,0 +1,46 @@
+/* Prevenir scroll horizontal en toda la aplicación */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  position: relative;
+}
+
+/* Asegurar que todos los contenedores respeten el ancho máximo */
+* {
+  box-sizing: border-box;
+}
+
+/* Prevenir overflow en elementos Vuetify */
+.v-application {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+.v-application__wrap {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+.v-main {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+/* Asegurar que los containers fluid no causen overflow */
+.v-container.v-container--fluid {
+  max-width: 100% !important;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+@media (max-width: 600px) {
+  .v-container.v-container--fluid {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
