@@ -1,18 +1,17 @@
 import { defineStore } from 'pinia'
 import type { Product } from '../types'
 import { useAuthStore } from './auth'
+import { useSupabase } from '../composables/useSupabase'
 
-type SupabaseClientLike = any
-
-function getSupabase(): SupabaseClientLike | null {
-    const nuxtApp = useNuxtApp() as any
-    return nuxtApp?.$supabase || nuxtApp?.$supabaseClient || null
+function getSupabase() {
+    try { return useSupabase() } catch { return null }
 }
 
 function toProduct(row: any): Product {
     return {
         id: String(row.id),
         org_id: String(row.org_id),
+        department_owner_id: row.department_owner_id ? String(row.department_owner_id) : undefined,
         name: String(row.name ?? ''),
         price: Number(row.price ?? 0),
         category: row.category ?? undefined,
@@ -21,6 +20,12 @@ function toProduct(row: any): Product {
         created_at: row.created_at ?? undefined,
         updated_at: row.updated_at ?? undefined,
     }
+}
+
+function currentDepartmentOwnerId(profile: any): string | null {
+    if (!profile) return null
+    if (profile.role === 'pastor' || profile.role === 'leader' || profile.role === 'super_admin') return profile.id
+    return profile.owner_id || null
 }
 
 export const useProductsStore = defineStore('products', {
@@ -90,9 +95,12 @@ export const useProductsStore = defineStore('products', {
             if (!sb?.from) throw new Error('Supabase no detectado')
             const orgId = auth.profile?.org_id
             if (!orgId) throw new Error('org_id faltante en profile')
+            const departmentOwnerId = currentDepartmentOwnerId(auth.profile)
+            if (!departmentOwnerId) throw new Error('No se pudo resolver el departamento operativo')
 
             const payload = {
                 org_id: orgId,
+                department_owner_id: departmentOwnerId,
                 name: input.name,
                 price: input.price,
                 category: input.category ?? null,

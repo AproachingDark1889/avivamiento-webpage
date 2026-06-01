@@ -39,14 +39,13 @@
 import { computed } from 'vue'
 import type { Product } from '../types'
 import { getCategoryIcon } from '../utils/categories'
+import { formatMoney } from '../utils/format'
 
 const props = defineProps<{
   product: Product
 }>()
 
-const formattedPrice = computed(() => {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(props.product.price)
-})
+const formattedPrice = computed(() => formatMoney(props.product.price))
 
 const bgColor = computed(() => {
   // Generar color consistente basado en el nombre

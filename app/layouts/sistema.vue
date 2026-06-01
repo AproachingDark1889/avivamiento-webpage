@@ -23,7 +23,7 @@
       <v-divider color="white" class="mb-2" style="opacity: 0.15;" />
 
       <v-list nav density="comfortable">
-        <v-list-item to="/sistema" color="secondary" rounded="lg" class="mb-1">
+        <v-list-item to="/page/POS" color="secondary" rounded="lg" class="mb-1">
           <template #prepend>
             <v-icon icon="mdi-view-dashboard-outline" />
           </template>
@@ -32,21 +32,21 @@
 
         <v-list-subheader class="text-uppercase font-weight-bold text-caption mt-4 mb-1" style="color: rgba(255,255,255,0.5);">Operación</v-list-subheader>
 
-        <v-list-item to="/sistema/pos" color="secondary" rounded="lg" class="mb-1">
+        <v-list-item to="/page/POS/pointOfSales" color="secondary" rounded="lg" class="mb-1">
           <template #prepend>
             <v-icon icon="mdi-point-of-sale" />
           </template>
-          <v-list-item-title class="font-weight-bold">Caja (POS)</v-list-item-title>
+          <v-list-item-title class="font-weight-bold">Caja </v-list-item-title>
         </v-list-item>
 
-        <v-list-item to="/sistema/kds" color="secondary" rounded="lg" class="mb-1">
+        <v-list-item to="/page/POS/kds" color="secondary" rounded="lg" class="mb-1">
           <template #prepend>
             <v-icon icon="mdi-chef-hat" />
           </template>
-          <v-list-item-title class="font-weight-bold">Cocina (KDS)</v-list-item-title>
+          <v-list-item-title class="font-weight-bold">Cocina</v-list-item-title>
         </v-list-item>
 
-        <v-list-item to="/sistema/corte" color="secondary" rounded="lg" class="mb-1">
+        <v-list-item to="/page/POS/cashClosing" color="secondary" rounded="lg" class="mb-1">
           <template #prepend>
             <v-icon icon="mdi-cash-register" />
           </template>
@@ -55,21 +55,21 @@
 
         <v-list-subheader class="text-uppercase font-weight-bold text-caption mt-4 mb-1" style="color: rgba(255,255,255,0.5);">Gestión</v-list-subheader>
         
-        <v-list-item to="/sistema/admin/productos" color="secondary" rounded="lg" class="mb-1">
+        <v-list-item to="/page/POS/products" color="secondary" rounded="lg" class="mb-1">
           <template #prepend>
             <v-icon icon="mdi-food" />
           </template>
           <v-list-item-title class="font-weight-bold">Productos</v-list-item-title>
         </v-list-item>
 
-        <v-list-item to="/sistema/reportes" color="secondary" rounded="lg" class="mb-1">
+        <v-list-item to="/page/POS/reports" color="secondary" rounded="lg" class="mb-1">
           <template #prepend>
             <v-icon icon="mdi-chart-line" />
           </template>
           <v-list-item-title class="font-weight-bold">Reportes</v-list-item-title>
         </v-list-item>
 
-        <v-list-item to="/sistema/admin/usuarios" color="secondary" rounded="lg" class="mb-1">
+        <v-list-item to="/page/POS/users" color="secondary" rounded="lg" class="mb-1">
           <template #prepend>
             <v-icon icon="mdi-account-group-outline" />
           </template>
@@ -123,15 +123,15 @@
       bg-color="primary"
       grow
     >
-      <v-btn to="/sistema/pos" value="pos">
+      <v-btn to="/page/POS/pointOfSales" value="pos">
         <v-icon>mdi-point-of-sale</v-icon>
         <span>Caja</span>
       </v-btn>
-      <v-btn to="/sistema/kds" value="kds">
+      <v-btn to="/page/POS/kds" value="kds">
         <v-icon>mdi-chef-hat</v-icon>
         <span>Cocina</span>
       </v-btn>
-      <v-btn to="/sistema/corte" value="corte">
+      <v-btn to="/page/POS/cashClosing" value="corte">
         <v-icon>mdi-cash</v-icon>
         <span>Corte</span>
       </v-btn>
@@ -143,9 +143,10 @@
           </v-btn>
         </template>
         <v-list density="compact" rounded="lg" elevation="4">
-          <v-list-item to="/sistema" title="Inicio" prepend-icon="mdi-home"></v-list-item>
-          <v-list-item to="/sistema/reportes" title="Reportes" prepend-icon="mdi-chart-line"></v-list-item>
-          <v-list-item to="/sistema/admin/usuarios" title="Usuarios" prepend-icon="mdi-account-group"></v-list-item>
+          <v-list-item to="/page/POS" title="Inicio" prepend-icon="mdi-home"></v-list-item>
+          <v-list-item to="/page/POS/products" title="Productos" prepend-icon="mdi-food"></v-list-item>
+          <v-list-item to="/page/POS/reports" title="Reportes" prepend-icon="mdi-chart-line"></v-list-item>
+          <v-list-item to="/page/POS/users" title="Usuarios" prepend-icon="mdi-account-group"></v-list-item>
         </v-list>
       </v-menu>
     </v-bottom-navigation>
@@ -182,9 +183,9 @@ const router = useRouter()
 const route = useRoute()
 
 const activeBottomNav = computed(() => {
-  if (route.path.includes('/pos')) return 'pos'
+  if (route.path.includes('/pointOfSales')) return 'pos'
   if (route.path.includes('/kds')) return 'kds'
-  if (route.path.includes('/corte')) return 'corte'
+  if (route.path.includes('/cashClosing')) return 'corte'
   return 'more'
 })
 
@@ -201,7 +202,9 @@ async function logout() {
   } catch (e) {
     console.error('Logout error:', e)
   } finally {
-    router.replace('/login')
+    // Forzamos una recarga fuerte (Hard Reload) hacia login 
+    // para destruir garantizadamente cualquier estado residual en SSR, Pinia o Memoria.
+    window.location.href = '/login'
   }
 }
 </script>

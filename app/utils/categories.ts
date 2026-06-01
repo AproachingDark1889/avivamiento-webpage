@@ -12,6 +12,7 @@ export const PRODUCT_CATEGORIES = [
     { value: 'dessert', title: 'Postres / Pan', icon: 'mdi-cupcake' },
 
     // Otros
+    { value: 'book', title: 'Libros', icon: 'mdi-book-open-page-variant' },
     { value: 'other', title: 'Varios', icon: 'mdi-shape' },
 ] as const
 

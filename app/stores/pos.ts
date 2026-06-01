@@ -96,88 +96,43 @@ export const usePosStore = defineStore('pos', {
     },
 
     async checkout(paidWith: number, change: number, paymentMethod: string) {
-      void paymentMethod
       if (this.cart.length === 0) throw new Error('Carrito vacío')
 
       this.loading = true
 
       const nuxtApp = useNuxtApp()
-      const sb = (nuxtApp.$supabase || nuxtApp.$supabaseClient) as any // Cast temporal para evitar error de tipo en NuxtApp
+      const sb = (nuxtApp.$supabase || nuxtApp.$supabaseClient) as any
 
-      if (!sb || typeof sb.from !== 'function') {
+      if (!sb || typeof sb.rpc !== 'function') {
         this.loading = false
         this.showPayment = false
         throw new Error('Supabase no disponible')
       }
 
-      const total = this.total
-      let createdOrder: Order | null = null
-
       try {
-        // 1. Insertar Orden (pending)
-        const { data, error: orderError } = await sb
-          .from('orders')
-          .insert({
-            total,
-            status: 'pending',
-            paid_with: paidWith,
-            change,
-            payment_method: paymentMethod
-          })
-          .select()
-          .single()
+        const { useAuthStore } = await import('./auth')
+        const auth = useAuthStore()
+        const autoAccept = auth.profile?.auto_accept_orders === true
 
-        if (orderError) throw orderError
-        createdOrder = data as Order
+        // Una sola llamada atómica. PostgreSQL valida precios, org_id y existencia.
+        // Si falla cualquier paso interno, revierte TODO. Sin rollback manual.
+        const { data, error } = await sb.rpc('process_checkout', {
+          p_items: this.cart.map(item => ({
+            product_id: item.product_id,
+            quantity: item.quantity,
+          })),
+          p_payment_method: paymentMethod,
+          p_paid_with: paidWith,
+          p_change: change,
+          p_auto_accept: autoAccept,
+        })
 
-        // 2. Insertar Items
-        const items = this.cart.map((item) => ({
-          order_id: createdOrder!.id,
-          product_id: item.product_id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          subtotal: item.subtotal,
-        }))
-
-        const { error: itemsError } = await sb.from('order_items').insert(items)
-        if (itemsError) throw itemsError
-
-        // 3. Trigger semántico (evita race con KDS)
-        // Intentamos tocar updated_at para despertar al realtime de KDS *después* de que los items existan
-        const nowIso = new Date().toISOString()
-        const { error: triggerError } = await sb
-          .from('orders')
-          .update({ updated_at: nowIso }) // Si updated_at no existe en DB, esto podría fallar, así que usamos fallback
-          .eq('id', createdOrder!.id)
-
-        if (triggerError) {
-          // Fallback seguro: tocar total a sí mismo para disparar UPDATE
-          const { error: fallbackError } = await sb
-            .from('orders')
-            .update({ total })
-            .eq('id', createdOrder!.id)
-          if (fallbackError) throw fallbackError
-        }
+        if (error) throw error
 
         this.clearCart()
-        return createdOrder
+        return data
       } catch (e) {
-        // Rollback: Si falla inserción de items o trigger
-        if (createdOrder?.id) {
-          console.error('⚠️ Iniciando Rollback por error:', e)
-          try {
-            const { error: delError } = await sb.from('orders').delete().eq('id', createdOrder.id)
-            if (delError) {
-              console.error('❌ Falló DELETE rollback, intentando CANCEL:', delError)
-              // Si falla delete, marcamos cancelled
-              await sb.from('orders').update({ status: 'cancelled' }).eq('id', createdOrder.id)
-            }
-          } catch (rollbackError) {
-            console.error('❌ Rollback failed completely:', rollbackError)
-          }
-        }
-        console.error('❌ Error en checkout:', e) // Log error para debug
+        console.error('❌ Error en checkout:', e)
         throw e
       } finally {
         this.loading = false

@@ -1,4 +1,4 @@
-// nuxt.config.ts - Configuración corregida y AUMENTADA por Ánima
+// nuxt.config.ts - AvivaCheck POS
 import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 
 export default defineNuxtConfig({
@@ -15,7 +15,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       supabaseUrl: process.env.SUPABASE_URL,
-      supabaseKey: process.env.SUPABASE_KEY,
+      supabaseKey: process.env.SUPABASE_ANON_KEY,
     }
   },
   // -------------------------------------------------------
@@ -24,62 +24,30 @@ export default defineNuxtConfig({
     compressPublicAssets: {
       brotli: true,
       gzip: true,
+
     },
     minify: true,
-    preset: 'service-worker', // Cambio estratégico: Service Worker para SPA
-    port: 3002,
+    preset: 'static', // Static hosting (Hostinger) — genera HTML/CSS/JS puro
+    // port: 3002, // Comentado: Dejar que el entorno defina el puerto (process.env.PORT) o usar el default 3000
     moduleSideEffects: ['vue-bundle-renderer'],
   },
 
   app: {
-    baseURL: '/sistema/', // Mantenemos esto firme
+    baseURL: '/sistema/',
     head: {
-      title: 'Pastor Adrian Aguirre | Avivamiento Monterrey',
+      title: 'AvivaCheck POS',
       htmlAttrs: {
         lang: 'es'
       },
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        {
-          name: 'description',
-          content: 'Iglesia Avivamiento Monterrey dirigida por el Pastor Adrian Aguirre. Únete a nuestra comunidad cristiana en Apodaca, Monterrey, Nuevo León. Cultos dominicales y reuniones de oración.'
-        },
-        {
-          name: 'keywords',
-          content: 'Adrian Aguirre, Pastor Adrian Aguirre, Avivamiento Monterrey, iglesia Monterrey, iglesia Apodaca, iglesia cristiana Monterrey, cultos cristianos Monterrey, pastor Monterrey, iglesia evangélica Monterrey'
-        },
-        { name: 'author', content: 'Iglesia Avivamiento Monterrey' },
-        { name: 'robots', content: 'index, follow' },
-        { name: 'googlebot', content: 'index, follow' },
-        { name: 'format-detection', content: 'telephone=no' },
-        { property: 'og:site_name', content: 'Avivamiento Monterrey' },
-        { property: 'og:title', content: 'Pastor Adrian Aguirre | Avivamiento Monterrey' },
-        { property: 'og:description', content: 'Iglesia Avivamiento Monterrey dirigida por el Pastor Adrian Aguirre. Únete a nuestra comunidad cristiana en Apodaca, Monterrey.' },
-        { property: 'og:type', content: 'website' },
-        { property: 'og:url', content: 'https://avivamientomonterrey.com' },
-        { property: 'og:locale', content: 'es_MX' },
-        { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:title', content: 'Pastor Adrian Aguirre | Avivamiento Monterrey' },
-        { name: 'twitter:description', content: 'Iglesia Avivamiento Monterrey - Pastor Adrian Aguirre' },
-        { name: 'geo.region', content: 'MX-NLE' },
-        { name: 'geo.placename', content: 'Apodaca, Monterrey' },
+        { name: 'description', content: 'AvivaCheck — Sistema de Punto de Venta' },
+        { name: 'robots', content: 'noindex, nofollow' },
       ],
       link: [
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'dns-prefetch', href: 'https://www.google-analytics.com' },
-        { rel: 'dns-prefetch', href: 'https://www.googletagmanager.com' },
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        { rel: 'canonical', href: 'https://avivamientomonterrey.com' }
       ],
-      noscript: [
-        // Google Tag Manager (noscript fallback)
-        {
-          children: '<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NP63RVGW" height="0" width="0" style="display:none;visibility:hidden"></iframe>',
-          body: true
-        }
-      ]
     },
   },
 
@@ -240,26 +208,7 @@ export default defineNuxtConfig({
     localLayerAliases: false, // Desactivado para reducir memoria
   },
 
-  routeRules: {
-    '/': {
-      prerender: true,
-      headers: {
-        'cache-control': 'public, max-age=3600, s-maxage=3600'
-      }
-    },
-    '/land': {
-      prerender: true,
-      headers: {
-        'cache-control': 'public, max-age=3600, s-maxage=3600'
-      }
-    },
-    '/calendar': {
-      swr: 3600,
-    },
-    '/ministerios': {
-      swr: 3600,
-    },
-  },
+  routeRules: {},
 
   image: {
     format: ['webp'],

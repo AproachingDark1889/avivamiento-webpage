@@ -34,7 +34,7 @@
               </v-alert>
 
               <div class="d-flex align-center mt-4">
-                <v-btn color="primary" href="/sistema" style="text-transform: none;">
+                <v-btn color="primary" href="/page/POS" style="text-transform: none;">
                   Ir a Sistema
                 </v-btn>
                 <v-spacer />

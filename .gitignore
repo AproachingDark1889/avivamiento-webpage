@@ -1,4 +1,4 @@
-# Nuxt dev/build outputscd 
+# Nuxt dev/build outputs
 .data
 .nuxt
 .nitro
@@ -23,3 +23,15 @@ logs
 !.env.example
 
 .vercel
+
+# Operational Chaos
+tests/evidence/operational-chaos/
+
+# Playwright artifacts
+.playwright-output/
+playwright-report/
+test-results/
+tests/evidence/
+
+# Supabase local CLI state
+supabase/.temp/

@@ -112,6 +112,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatMoney } from '../utils/format'
 
 const props = defineProps<{
   pos: any
@@ -121,7 +122,5 @@ const props = defineProps<{
 
 defineEmits(['close'])
 
-const money = (val: number) => {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val)
-}
+const money = formatMoney
 </script>
