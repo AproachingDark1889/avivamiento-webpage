@@ -1,0 +1,2 @@
+﻿-- Local seed intentionally left empty.
+-- Test data must be created through the application UI or scoped test harnesses.
