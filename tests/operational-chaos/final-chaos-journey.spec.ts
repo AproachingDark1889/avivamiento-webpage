@@ -55,6 +55,7 @@ type ActorKey =
   | 'cookC'
 
 type RoleTitle = 'Lider de Departamento' | 'Cajero' | 'Cocina'
+const LEADER_ROLE_OPTION = /L.{0,4}der de Departamento|Lider de Departamento/i
 
 interface TestUser {
   name: string
@@ -66,6 +67,12 @@ interface ActorPlan {
   key: ActorKey
   viewport: { width: number; height: number }
   purpose: string
+}
+
+interface CampaignViewport {
+  id: string
+  label: string
+  viewport: { width: number; height: number }
 }
 
 interface ActorSession extends ActorPlan {
@@ -146,6 +153,14 @@ const ACTOR_PLANS: ActorPlan[] = [
     viewport: { width: 1024, height: 768 },
     purpose: 'Cocinero C - catalogo de platillos y KDS',
   },
+]
+
+const FINAL_CHAOS_VIEWPORTS: CampaignViewport[] = [
+  { id: 'desktop', label: 'Desktop 1440x900', viewport: { width: 1440, height: 900 } },
+  { id: 'laptop', label: 'Laptop 1366x768', viewport: { width: 1366, height: 768 } },
+  { id: 'tablet', label: 'Tablet 768x1024', viewport: { width: 768, height: 1024 } },
+  { id: 'mobile', label: 'Mobile 390x844', viewport: { width: 390, height: 844 } },
+  { id: 'mobile-chico', label: 'Mobile chico 360x740', viewport: { width: 360, height: 740 } },
 ]
 
 const DEPARTMENT_PLANS: DepartmentPlan[] = [
@@ -321,22 +336,133 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
     }
   })
 
-  test.skip('Fase C: caos multi-departamento sobre una iglesia real', async ({ browser }) => {
+  for (const viewportCase of FINAL_CHAOS_VIEWPORTS) {
+  test(`Fase C matriz: ${viewportCase.label} - caos multi-departamento sobre una iglesia real`, async ({ browser }) => {
     assertPhase2BExecutionAllowed()
 
     const runId = createRunId()
+    const password = getTestPasswordSafe()
     const manifest = createEmptyManifest(runId)
     const supabaseAdmin = createClient(getSupabaseUrlSafe(), getServiceKeySafe(), {
       auth: { persistSession: false, autoRefreshToken: false },
     })
-    const actors = await createActorSessions(browser)
+    const actors = await createActorSessions(browser, viewportCase.viewport)
+    const users = buildUsers(runId, password)
+    const slug = runId.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+    const churchName = `Iglesia Chaos ${viewportCase.id} ${slug}`
+    const onboardingProduct = { name: 'Producto Inicial', price: '50' }
+    const today = new Date().toISOString().split('T')[0]
+
+    let orgId = ''
+    let leaderADepartmentId = ''
+    let leaderBDepartmentId = ''
+    let leaderCDepartmentId = ''
 
     try {
-      await test.step('Construir jerarquia real sin seed.ts', async () => {
-        throw new Error('Fase C pendiente: crear pastor, lideres, staff y catalogos por UI.')
+      // 1. EL FUNDADOR (PASTOR)
+      await test.step('Pastor crea iglesia, lideres y delega permisos', async () => {
+        await signupPastorUI(actors.pastor.page, users.pastor, churchName, supabaseAdmin)
+        await captureKnownEntitiesForCleanup(supabaseAdmin, manifest, { churchName, emails: [users.pastor.email] })
+
+        const pastorProfile = await requireProfileByEmail(supabaseAdmin, users.pastor.email)
+        orgId = pastorProfile.org_id
+
+        await completeOnboardingUI(actors.pastor.page, {
+          churchName,
+          productName: onboardingProduct.name,
+          productPrice: onboardingProduct.price,
+          leader: users.leaderA,
+        })
+
+        await captureKnownEntitiesForCleanup(supabaseAdmin, manifest, {
+          churchName, emails: [users.pastor.email, users.leaderA.email], productNames: [onboardingProduct.name],
+        })
+
+        const leaderAProfile = await requireProfileByEmail(supabaseAdmin, users.leaderA.email)
+        leaderADepartmentId = leaderAProfile.id
+
+        await createUserFromUsersUI(actors.pastor.page, users.leaderB, LEADER_ROLE_OPTION)
+        await createUserFromUsersUI(actors.pastor.page, users.leaderC, LEADER_ROLE_OPTION)
+
+        const leaderBProfile = await requireProfileByEmail(supabaseAdmin, users.leaderB.email)
+        leaderBDepartmentId = leaderBProfile.id
+        const leaderCProfile = await requireProfileByEmail(supabaseAdmin, users.leaderC.email)
+        leaderCDepartmentId = leaderCProfile.id
+
+        // Delega auto-cobro solo a Leader A (Librería no tiene cajeros)
+        await toggleAutoAcceptUI(actors.pastor.page, users.leaderA.email, true)
+
+        await captureKnownEntitiesForCleanup(supabaseAdmin, manifest, {
+          churchName, emails: [users.leaderB.email, users.leaderC.email],
+        })
       })
 
-      await test.step('Ejecutar ventas concurrentes por departamento', async () => {
+      // 2. LOS LIDERES (CONTRATACION Y DELEGACION)
+      await test.step('Líderes contratan staff y delegan permisos', async () => {
+        // Leader B (Cafeteria)
+        await loginUserUI(actors.leaderB.page, users.leaderB.email, users.leaderB.password, BASE_URL)
+        await createUserFromUsersUI(actors.leaderB.page, users.sellerB1, 'Cajero')
+        await createUserFromUsersUI(actors.leaderB.page, users.sellerB2, 'Cajero')
+        await createUserFromUsersUI(actors.leaderB.page, users.sellerB3, 'Cajero')
+
+        // Delega auto-cobro a su staff manualmente en UI
+        await toggleAutoAcceptUI(actors.leaderB.page, users.sellerB1.email, true)
+        await toggleAutoAcceptUI(actors.leaderB.page, users.sellerB2.email, true)
+        await toggleAutoAcceptUI(actors.leaderB.page, users.sellerB3.email, true)
+
+        // Leader C (Comedor)
+        await loginUserUI(actors.leaderC.page, users.leaderC.email, users.leaderC.password, BASE_URL)
+        await createUserFromUsersUI(actors.leaderC.page, users.sellerC, 'Cajero')
+        await createUserFromUsersUI(actors.leaderC.page, users.cookC, 'Cocina')
+
+        await captureKnownEntitiesForCleanup(supabaseAdmin, manifest, {
+          churchName, emails: [users.sellerB1.email, users.sellerB2.email, users.sellerB3.email, users.sellerC.email, users.cookC.email],
+        })
+      })
+
+      // 3. STAFF OPERATIVO (CATALOGO SUBALTERNO)
+      await test.step('Construcción de catálogo subalterno', async () => {
+        // Leader A registra libros (no tiene staff)
+        await loginUserUI(actors.leaderA.page, users.leaderA.email, users.leaderA.password, BASE_URL)
+        for (const product of DEPARTMENT_PLANS.find(dept => dept.id === 'books')!.products) {
+          await createProductFromProductsUI(actors.leaderA.page, product)
+        }
+
+        // Seller B1 registra snacks (prueba de permisos subalternos)
+        await loginUserUI(actors.sellerB1.page, users.sellerB1.email, users.sellerB1.password, BASE_URL)
+        for (const product of DEPARTMENT_PLANS.find(dept => dept.id === 'cafe')!.products) {
+          await createProductFromProductsUI(actors.sellerB1.page, product)
+        }
+
+        // Cook C registra platillos
+        await loginUserUI(actors.cookC.page, users.cookC.email, users.cookC.password, BASE_URL)
+        for (const product of DEPARTMENT_PLANS.find(dept => dept.id === 'kitchen')!.products) {
+          await createProductFromProductsUI(actors.cookC.page, product)
+        }
+
+        const allProductNames = DEPARTMENT_PLANS.flatMap(d => d.products.map(p => p.name))
+        await captureKnownEntitiesForCleanup(supabaseAdmin, manifest, {
+          churchName, emails: [], productNames: allProductNames,
+        })
+      })
+
+      // 4. TORMENTA CONCURRENTE
+      await test.step('Operación concurrente masiva', async () => {
+        await Promise.all([
+          loginUserUI(actors.sellerB2.page, users.sellerB2.email, users.sellerB2.password, BASE_URL),
+          loginUserUI(actors.sellerB3.page, users.sellerB3.email, users.sellerB3.password, BASE_URL),
+          loginUserUI(actors.sellerC.page, users.sellerC.email, users.sellerC.password, BASE_URL),
+        ])
+
+        // Navegamos al POS / KDS
+        await Promise.all([
+          actors.leaderA.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' }),
+          actors.sellerB1.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' }),
+          actors.sellerB2.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' }),
+          actors.sellerB3.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' }),
+          actors.sellerC.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' }),
+        ])
+
         const departmentAProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'books')!.products
         const departmentBProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'cafe')!.products
         const departmentCProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'kitchen')!.products
@@ -349,18 +475,64 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
           orchestratePosKdsChaos(actors.sellerC.page, actors.cookC.page, departmentCProducts, 12),
         ])
       })
+
+      // 5. CORTES DESCENTRALIZADOS Y AUDITORIA
+      await test.step('Cierres de caja descentralizados', async () => {
+        const departmentAProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'books')!.products
+        const departmentBProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'cafe')!.products
+        const departmentCProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'kitchen')!.products
+
+        await closeDepartmentCash(
+          actors.leaderA.page,
+          today,
+          expectedCashForSales(departmentAProducts, 15),
+          orgId,
+          leaderADepartmentId,
+          supabaseAdmin,
+        )
+        await closeDepartmentCash(
+          actors.leaderB.page,
+          today,
+          expectedCashForSales(departmentBProducts, 10 * 3),
+          orgId,
+          leaderBDepartmentId,
+          supabaseAdmin,
+        )
+        await closeDepartmentCash(
+          actors.leaderC.page,
+          today,
+          expectedCashForSales(departmentCProducts, 12),
+          orgId,
+          leaderCDepartmentId,
+          supabaseAdmin,
+        )
+      })
+
     } finally {
+      const allProductNames = DEPARTMENT_PLANS.flatMap(d => d.products.map(p => p.name))
+      const allEmails = Object.values(users).map(u => u.email)
+      await captureKnownEntitiesForCleanup(supabaseAdmin, manifest, {
+        churchName,
+        emails: allEmails,
+        productNames: [onboardingProduct.name, ...allProductNames],
+      })
+      saveFinalChaosManifest(manifest)
       await cleanupJourney(manifest, supabaseAdmin, actors)
     }
   })
+  }
 })
 
-async function createActorSessions(browser: Browser): Promise<Record<ActorKey, ActorSession>> {
+async function createActorSessions(
+  browser: Browser,
+  viewportOverride?: { width: number; height: number },
+): Promise<Record<ActorKey, ActorSession>> {
   const entries = await Promise.all(
     ACTOR_PLANS.map(async plan => {
-      const context = await browser.newContext({ viewport: plan.viewport })
+      const viewport = viewportOverride ?? plan.viewport
+      const context = await browser.newContext({ viewport })
       const page = await context.newPage()
-      return [plan.key, { ...plan, context, page }] as const
+      return [plan.key, { ...plan, viewport, context, page }] as const
     }),
   )
 
@@ -580,6 +752,15 @@ async function closeDepartmentCash(
   await page.goto(`${BASE_URL}/page/POS/cashClosing`, { waitUntil: 'domcontentloaded' })
   await performCashClosingUI(page, dateStr, countedAmount)
   await assertMathematicalConsistency(supabaseAdmin, orgId, dateStr, departmentOwnerId)
+}
+
+function expectedCashForSales(catalog: ProductPlan[], count: number): string {
+  let total = 0
+  for (let idx = 0; idx < count; idx++) {
+    total += Number(catalog[idx % catalog.length].price)
+  }
+
+  return String(total)
 }
 
 async function signupPastorUI(
