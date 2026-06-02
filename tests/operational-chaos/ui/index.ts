@@ -2,22 +2,36 @@
 import { type Page, expect } from '@playwright/test'
 
 export async function loginUserUI(page: Page, email: string, password: string, baseUrl: string): Promise<void> {
-  await page.goto(`${baseUrl}/login`, { waitUntil: 'domcontentloaded' })
-  await Promise.race([
-    page.waitForURL(url => !url.toString().includes('/login'), { timeout: 5000 }).catch(() => null),
-    page.locator('input[type="password"]').first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => null),
-  ])
-
-  if (!page.url().includes('/login')) {
-    await page.waitForTimeout(500)
-    return
-  }
-  
-  const emailInput = page.locator('input[type="email"], input[type="text"]').first()
+  const emailInput = page.locator('input[autocomplete="email"], input[type="email"], input[type="text"]').first()
   const passwordInput = page.locator('input[type="password"]').first()
-  
-  await expect(emailInput).toBeVisible({ timeout: 10000 })
-  await expect(passwordInput).toBeVisible({ timeout: 10000 })
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.goto(`${baseUrl}/login`, { waitUntil: 'domcontentloaded' })
+    await Promise.race([
+      page.waitForURL(url => !url.toString().includes('/login'), { timeout: 5000 }).catch(() => null),
+      passwordInput.waitFor({ state: 'visible', timeout: 5000 }).catch(() => null),
+    ])
+
+    if (!page.url().includes('/login')) {
+      await page.waitForTimeout(500)
+      return
+    }
+
+    const formReady = await Promise.all([
+      emailInput.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false),
+      passwordInput.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false),
+    ])
+
+    if (formReady.every(Boolean)) break
+
+    if (attempt === 3) {
+      const bodyText = await page.locator('body').textContent().catch(() => '')
+      throw new Error(
+        `Login form did not render for ${email}. url=${page.url()}; bodyLength=${bodyText?.length ?? 0}`,
+      )
+    }
+  }
+
   try {
     await emailInput.fill(email, { timeout: 10000 })
     if (!page.url().includes('/login')) return
@@ -55,16 +69,51 @@ export async function performCheckoutUI(
     // Navigate to POS to reset any lingering drawer state
     const currentUrl = page.url()
     if (!currentUrl.includes('/pointOfSales')) {
-      await page.goto(currentUrl.split('/page/POS')[0] + '/page/POS/pointOfSales', { waitUntil: 'domcontentloaded' })
+      await page.goto(resolvePosUrl(page), { waitUntil: 'domcontentloaded' })
       await page.waitForTimeout(1000)
     }
   }
 
   // ── 2. Click AGREGAR on the product card ──
-  const prodCard = page.locator('.v-card, [class*="card"]').filter({ hasText: productName }).first()
-  const btnAgregar = prodCard.locator('button').filter({ hasText: /AGREGAR|Agregar/i }).first()
-  await btnAgregar.waitFor({ state: 'visible', timeout: 10000 })
-  await btnAgregar.click()
+  let prodCard = page.locator('.product-card, .v-card').filter({ hasText: productName }).first()
+  let productVisible = false
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    if (attempt > 1 || !page.url().includes('/pointOfSales')) {
+      await page.goto(resolvePosUrl(page), { waitUntil: 'domcontentloaded' })
+      await page.waitForTimeout(1000)
+    }
+
+    const searchInput = page.locator('input[placeholder*="Buscar"], input[aria-label*="Buscar"]').first()
+    if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await searchInput.fill(productName)
+      await page.waitForTimeout(300)
+    }
+
+    prodCard = page.locator('.product-card, .v-card').filter({ hasText: productName }).first()
+    productVisible = await prodCard.waitFor({ state: 'visible', timeout: 30000 })
+      .then(() => true)
+      .catch(() => false)
+
+    if (productVisible) break
+  }
+
+  if (!productVisible) {
+    const bodyText = await page.locator('body').textContent().catch(() => '')
+    throw new Error(
+      `Product card did not render before checkout. product="${productName}", url=${page.url()}, ` +
+      `isMobile=${isMobile}, bodyLength=${bodyText?.length ?? 0}`,
+    )
+  }
+
+  await prodCard.scrollIntoViewIfNeeded()
+
+  const btnAgregar = prodCard.getByRole('button', { name: /AGREGAR|Agregar/i }).first()
+  if (await btnAgregar.isVisible().catch(() => false)) {
+    await btnAgregar.click()
+  } else {
+    await prodCard.click()
+  }
 
   // ── 3. Wait for cart to reflect the added product (total changes from $0.00) ──
   // This confirms the product was actually added regardless of viewport
@@ -93,7 +142,7 @@ export async function performCheckoutUI(
     throw new Error(
       `COBRAR button is disabled — cart is empty or product was not added. ` +
       `Product: "${productName}", isMobile: ${isMobile}. ` +
-      `Body snippet: ${bodyText?.substring(0, 300)}`
+      `bodyLength=${bodyText?.length ?? 0}`
     )
   }
   await btnCobrar.click()
@@ -120,9 +169,17 @@ export async function performCheckoutUI(
 
   // ── 9. Mobile: navigate back to POS to guarantee clean state for next checkout ──
   if (isMobile) {
-    await page.goto(page.url().split('/page/POS')[0] + '/page/POS/pointOfSales', { waitUntil: 'domcontentloaded' })
+    await page.goto(resolvePosUrl(page), { waitUntil: 'domcontentloaded' })
     await page.waitForTimeout(1000)
   }
+}
+
+function resolvePosUrl(page: Page): string {
+  const currentUrl = page.url()
+  if (currentUrl.includes('/sistema/')) {
+    return `${currentUrl.split('/sistema/')[0]}/sistema/page/POS/pointOfSales`
+  }
+  return 'http://localhost:3002/sistema/page/POS/pointOfSales'
 }
 
 export async function completeKdsOrderUI(page: Page, productName: string): Promise<void> {

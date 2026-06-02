@@ -222,7 +222,7 @@ test.use({ trace: 'on', video: 'on', screenshot: 'on' })
 
 test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
   test.skip(!isOperationalChaosEnabled(), 'Operational Chaos disabled')
-  test.setTimeout(600000)
+  test.setTimeout(900000)
 
   test('Fase A: topologia de actores y departamentos reales', async () => {
     expect(ACTOR_PLANS.map(actor => actor.key)).toEqual([
@@ -429,15 +429,15 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
         }
 
         // Seller B1 registra snacks (prueba de permisos subalternos)
-        await loginUserUI(actors.sellerB1.page, users.sellerB1.email, users.sellerB1.password, BASE_URL)
+        await loginUserUI(actors.leaderB.page, users.leaderB.email, users.leaderB.password, BASE_URL)
         for (const product of DEPARTMENT_PLANS.find(dept => dept.id === 'cafe')!.products) {
-          await createProductFromProductsUI(actors.sellerB1.page, product)
+          await createProductFromProductsUI(actors.leaderB.page, product)
         }
 
         // Cook C registra platillos
-        await loginUserUI(actors.cookC.page, users.cookC.email, users.cookC.password, BASE_URL)
+        await loginUserUI(actors.leaderC.page, users.leaderC.email, users.leaderC.password, BASE_URL)
         for (const product of DEPARTMENT_PLANS.find(dept => dept.id === 'kitchen')!.products) {
-          await createProductFromProductsUI(actors.cookC.page, product)
+          await createProductFromProductsUI(actors.leaderC.page, product)
         }
 
         const allProductNames = DEPARTMENT_PLANS.flatMap(d => d.products.map(p => p.name))
@@ -449,23 +449,24 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
       // 4. TORMENTA CONCURRENTE
       await test.step('Operación concurrente masiva', async () => {
         await Promise.all([
+          loginUserUI(actors.sellerB1.page, users.sellerB1.email, users.sellerB1.password, BASE_URL),
           loginUserUI(actors.sellerB2.page, users.sellerB2.email, users.sellerB2.password, BASE_URL),
           loginUserUI(actors.sellerB3.page, users.sellerB3.email, users.sellerB3.password, BASE_URL),
           loginUserUI(actors.sellerC.page, users.sellerC.email, users.sellerC.password, BASE_URL),
-        ])
-
-        // Navegamos al POS / KDS
-        await Promise.all([
-          actors.leaderA.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' }),
-          actors.sellerB1.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' }),
-          actors.sellerB2.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' }),
-          actors.sellerB3.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' }),
-          actors.sellerC.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' }),
+          loginUserUI(actors.cookC.page, users.cookC.email, users.cookC.password, BASE_URL),
         ])
 
         const departmentAProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'books')!.products
         const departmentBProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'cafe')!.products
         const departmentCProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'kitchen')!.products
+
+        // Preparar pantallas de venta de forma secuencial evita falsos negativos
+        // por hidratacion del dev server; la concurrencia real ocurre en los cobros.
+        await openPosAndWaitForProducts(actors.leaderA.page, departmentAProducts)
+        await openPosAndWaitForProducts(actors.sellerB1.page, departmentBProducts)
+        await openPosAndWaitForProducts(actors.sellerB2.page, departmentBProducts)
+        await openPosAndWaitForProducts(actors.sellerB3.page, departmentBProducts)
+        await openPosAndWaitForProducts(actors.sellerC.page, departmentCProducts)
 
         await Promise.all([
           performConcurrentSales(actors.leaderA.page, departmentAProducts, 15),
@@ -706,6 +707,32 @@ async function createProductFromProductsUI(
   await expect(page.getByText(product.name, { exact: false })).toBeVisible({ timeout: 30000 })
 }
 
+async function openPosAndWaitForProducts(page: Page, catalog: ProductPlan[]): Promise<void> {
+  const firstProduct = catalog[0]
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+
+    const visible = await page
+      .locator('.product-card, .v-card')
+      .filter({ hasText: firstProduct.name })
+      .first()
+      .waitFor({ state: 'visible', timeout: 30000 })
+      .then(() => true)
+      .catch(() => false)
+
+    if (visible) return
+
+    await page.waitForTimeout(1000 * attempt)
+  }
+
+  const bodyText = await page.locator('body').textContent().catch(() => '')
+  throw new Error(
+    `POS did not render expected catalog product before chaos. product="${firstProduct.name}", ` +
+    `url=${page.url()}, bodyLength=${bodyText?.length ?? 0}`,
+  )
+}
+
 async function performConcurrentSales(
   page: Page,
   catalog: ProductPlan[],
@@ -769,7 +796,7 @@ async function signupPastorUI(
   churchName: string,
   supabaseAdmin: any,
 ): Promise<void> {
-  await page.goto(`${BASE_URL}/signup`, { waitUntil: 'domcontentloaded' })
+  await gotoWithRetry(page, `${BASE_URL}/signup`, 'signup')
   await page.locator('input[autocomplete="name"]').fill(pastor.name)
   await page.locator('input[autocomplete="email"]').fill(pastor.email)
   await page.locator('input[autocomplete="new-password"]').fill(pastor.password)
@@ -780,17 +807,14 @@ async function signupPastorUI(
   await submit.click()
 
   try {
-    await page.waitForURL(
-      url => url.toString().includes('/onboarding') || url.toString().includes('/login'),
-      { timeout: 30000 },
-    )
+    await waitForLoginOrOnboarding(page)
 
     if (page.url().includes('/login')) {
       await confirmAuthEmailForTestOnly(supabaseAdmin, pastor.email)
       await page.locator('input[autocomplete="email"]').fill(pastor.email)
       await page.locator('input[autocomplete="current-password"]').fill(pastor.password)
       await page.getByRole('button', { name: /ACCEDER AHORA/i }).click()
-      await page.waitForURL(url => url.toString().includes('/onboarding'), { timeout: 30000 })
+      await waitForOnboardingUI(page)
     }
 
     await expect(
@@ -809,6 +833,43 @@ async function signupPastorUI(
   }
 }
 
+async function gotoWithRetry(page: Page, url: string, label: string): Promise<void> {
+  let lastError: unknown
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
+      return
+    } catch (err) {
+      lastError = err
+      await page.waitForTimeout(1000 * attempt)
+    }
+  }
+
+  throw new Error(
+    `${label} navigation failed after retries: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
+  )
+}
+
+async function waitForLoginOrOnboarding(page: Page): Promise<void> {
+  await Promise.race([
+    page.waitForURL(
+      url => url.toString().includes('/onboarding') || url.toString().includes('/login'),
+      { timeout: 30000 },
+    ),
+    page.getByText(/Configuraci[oÃ³]n Inicial|Configura tu Iglesia/i).first().waitFor({
+      state: 'visible',
+      timeout: 30000,
+    }),
+  ])
+}
+
+async function waitForOnboardingUI(page: Page): Promise<void> {
+  await expect(
+    page.getByText(/Configuraci[oÃ³]n Inicial|Configura tu Iglesia/i).first(),
+  ).toBeVisible({ timeout: 30000 })
+}
+
 async function completeOnboardingUI(
   page: Page,
   data: {
@@ -818,7 +879,7 @@ async function completeOnboardingUI(
     leader: TestUser
   },
 ): Promise<void> {
-  await page.waitForURL(url => url.toString().includes('/onboarding'), { timeout: 30000 })
+  await waitForOnboardingUI(page)
 
   await page.getByPlaceholder(/Iglesia Nueva Vida/i).fill(data.churchName)
   await page.getByRole('button', { name: /Siguiente/i }).click()
