@@ -1,4 +1,4 @@
-﻿-- Fix: create_new_user_rpc â€” identities insert usaba gen_random_uuid() como id
+-- Fix: create_new_user_rpc â€” identities insert usaba gen_random_uuid() como id
 -- y el email como provider_id. Supabase espera id=user_id y provider_id=user_id::text.
 -- Sin este fix, los usuarios creados via RPC no pueden hacer login ("Database error querying schema").
 
