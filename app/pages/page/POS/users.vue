@@ -152,10 +152,31 @@
                             </template>
                           </v-list-item>
                           <v-divider class="my-1" />
+                          <v-list-item
+                            v-if="p.role === 'cashier'"
+                            :title="p.independent_cash_register ? 'Caja independiente: ON' : 'Caja independiente: OFF'"
+                            :subtitle="p.independent_cash_register ? 'El cajero abre y cierra su propia caja' : 'El cajero usa la caja compartida del departamento'"
+                            :prepend-icon="p.independent_cash_register ? 'mdi-safe' : 'mdi-safe-square-outline'"
+                            :base-color="p.independent_cash_register ? 'success' : 'grey'"
+                            @click="toggleIndependentCash(p)"
+                          >
+                            <template v-slot:append>
+                              <v-switch
+                                :model-value="p.independent_cash_register"
+                                hide-details
+                                density="compact"
+                                color="success"
+                                readonly
+                              />
+                            </template>
+                          </v-list-item>
+                          <v-divider v-if="p.role === 'cashier'" class="my-1" />
                           </template>
-                          <v-list-item 
-                            title="Eliminar Usuario" 
-                            prepend-icon="mdi-delete-alert" 
+                          <v-list-item
+                            v-if="p.role === 'cashier' || p.role === 'kitchen'"
+                            title="Desactivar Usuario"
+                            subtitle="Conserva historial y bloquea acceso"
+                            prepend-icon="mdi-account-cancel"
                             base-color="error"
                             @click="deactivateUser(p)"
                           />
@@ -188,7 +209,7 @@ import type { AppRole, Profile } from '../../../types'
 import { createClient } from '@supabase/supabase-js'
 import { APP_ROLES, SUPER_ADMIN_CREATABLE_ROLES, PASTOR_ASSIGNABLE_ROLES, STAFF_ROLES, getRoleTitle, getRoleColor } from '../../../utils/roles'
 
-definePageMeta({ middleware: ['auth', 'role-leader'], layout: 'sistema' })
+definePageMeta({ middleware: ['auth', 'role-leader'], layout: 'sistema', requiredAccess: 'users' })
 useHead({ title: 'Usuarios - Aviva Check' })
 
 const auth = useAuthStore()
@@ -204,6 +225,7 @@ const newPassword = ref('')
 const newRole = ref<AppRole>('pastor')
 const creating = ref(false)
 const createWarning = ref('')
+const profileSelect = 'id,email,display_name,org_id,owner_id,role,created_at,auto_accept_orders,independent_cash_register,deactivated_at'
 
 const roleOptions = computed(() => {
   if (auth.role === 'super_admin') return SUPER_ADMIN_CREATABLE_ROLES
@@ -258,7 +280,8 @@ async function loadProfiles() {
       // Super Admin: ve TODOS los usuarios
       const { data: all, error } = await sb
         .from('profiles')
-        .select('id,email,display_name,org_id,owner_id,role,created_at,auto_accept_orders')
+        .select(profileSelect)
+        .is('deactivated_at', null)
         .order('created_at', { ascending: false })
         .limit(200)
       if (error) throw error
@@ -268,8 +291,9 @@ async function loadProfiles() {
       // Pastor: ve sus líderes (owner_id = pastor) + staff de esos líderes
       const { data: directReports, error: e1 } = await sb
         .from('profiles')
-        .select('id,email,display_name,org_id,owner_id,role,created_at,auto_accept_orders')
+        .select(profileSelect)
         .eq('owner_id', auth.profile.id)
+        .is('deactivated_at', null)
         .order('created_at', { ascending: false })
       if (e1) throw e1
 
@@ -279,8 +303,9 @@ async function loadProfiles() {
         const leaderIds = leaders.map((l: any) => l.id)
         const { data: staffOfLeaders, error: e2 } = await sb
           .from('profiles')
-          .select('id,email,display_name,org_id,owner_id,role,created_at,auto_accept_orders')
+          .select(profileSelect)
           .in('owner_id', leaderIds)
+          .is('deactivated_at', null)
           .order('created_at', { ascending: false })
         if (e2) throw e2
         data = [...(directReports ?? []), ...(staffOfLeaders ?? [])]
@@ -292,8 +317,9 @@ async function loadProfiles() {
       // Leader: ve SOLO su staff (owner_id = leader's ID)
       const { data: staff, error } = await sb
         .from('profiles')
-        .select('id,email,display_name,org_id,owner_id,role,created_at,auto_accept_orders')
+        .select(profileSelect)
         .eq('owner_id', auth.profile.id)
+        .is('deactivated_at', null)
         .order('created_at', { ascending: false })
       if (error) throw error
       data = staff ?? []
@@ -302,8 +328,9 @@ async function loadProfiles() {
       // Fallback: filtra por org_id
       const { data: orgUsers, error } = await sb
         .from('profiles')
-        .select('id,email,display_name,org_id,owner_id,role,created_at,auto_accept_orders')
+        .select(profileSelect)
         .eq('org_id', auth.profile.org_id)
+        .is('deactivated_at', null)
         .order('created_at', { ascending: false })
         .limit(200)
       if (error) throw error
@@ -349,13 +376,13 @@ function getEditableRolesFor(profile: Profile) {
 
 async function changeRole(profile: Profile, newRoleValue: string) {
   const sb = getSupabase()
-  if (!sb?.from) return
+  if (!sb?.rpc) return
 
   try {
-    const { error } = await sb
-      .from('profiles')
-      .update({ role: newRoleValue })
-      .eq('id', profile.id)
+    const { error } = await sb.rpc('change_staff_role_safely', {
+      p_target_user_id: profile.id,
+      p_new_role: newRoleValue,
+    })
 
     if (error) throw error
 
@@ -368,19 +395,18 @@ async function changeRole(profile: Profile, newRoleValue: string) {
 
 async function toggleAutoAccept(profile: Profile) {
   const sb = getSupabase()
-  if (!sb?.from) return
+  if (!sb?.rpc) return
 
   const newValue = !profile.auto_accept_orders
   
   try {
-    const { error } = await sb
-      .from('profiles')
-      .update({ auto_accept_orders: newValue })
-      .eq('id', profile.id)
+    const { error } = await sb.rpc('set_staff_auto_accept_safely', {
+      p_target_user_id: profile.id,
+      p_enabled: newValue,
+    })
 
     if (error) throw error
 
-    // Update local state
     profile.auto_accept_orders = newValue
     toast.success(newValue ? 'Auto-completar activado' : 'Auto-completar desactivado')
   } catch (e: any) {
@@ -388,43 +414,59 @@ async function toggleAutoAccept(profile: Profile) {
   }
 }
 
+async function toggleIndependentCash(profile: Profile) {
+  const sb = getSupabase()
+  if (!sb?.rpc) return
+
+  if (profile.role !== 'cashier') {
+    toast.error('La caja independiente solo aplica a cajeros')
+    return
+  }
+
+  const newValue = !profile.independent_cash_register
+
+  try {
+    const { error } = await sb.rpc('set_staff_independent_cash_safely', {
+      p_target_user_id: profile.id,
+      p_enabled: newValue,
+    })
+
+    if (error) throw error
+
+    profile.independent_cash_register = newValue
+    toast.success(newValue ? 'Caja independiente activada' : 'Caja compartida activada')
+  } catch (e: any) {
+    toast.error('Error: ' + (e?.message ?? String(e)))
+  }
+}
+
 async function deactivateUser(profile: Profile) {
   if (profile.email === 'admin@genesis.com') return
-  if (!confirm(`¿Seguro que deseas eliminar a ${profile.display_name || profile.email}?\n\nSe borrarán sus datos, productos, órdenes y usuarios subordinados.\nEsta acción NO se puede deshacer.`)) return
+  if (profile.role !== 'cashier' && profile.role !== 'kitchen') {
+    toast.error('Por ahora solo se puede desactivar staff operativo')
+    return
+  }
+  if (!confirm(`Seguro que deseas desactivar a ${profile.display_name || profile.email}?\n\nNo se borrara su historial. El usuario dejara de poder operar el sistema.`)) return
 
   const sb = getSupabase()
   if (!sb?.rpc) return
 
   loading.value = true
   try {
-    const { error } = await sb.rpc('delete_user_cascade', {
-      target_user_id: profile.id
+    const { error } = await sb.rpc('deactivate_staff_user_safely', {
+      p_target_user_id: profile.id,
+      p_reason: 'Desactivado desde gestion de usuarios',
     })
 
     if (error) throw error
 
-    toast.success('Usuario eliminado completamente')
+    toast.success('Usuario desactivado')
     profiles.value = profiles.value.filter(p => p.id !== profile.id)
   } catch (e: any) {
-    toast.error('Error al eliminar: ' + (e?.message ?? String(e)))
+    toast.error('Error al desactivar: ' + (e?.message ?? String(e)))
   } finally {
     loading.value = false
   }
-}
-
-async function deleteUser(profile: Profile) {
-  // Super Admin usa el mismo flujo
-  if (auth.role !== 'super_admin') {
-    toast.error('Solo Super Admin puede eliminar usuarios')
-    return
-  }
-  if (profile.email === 'admin@genesis.com') {
-    toast.error('No puedes eliminar la cuenta maestra')
-    return
-  }
-  
-  // Reusar la misma función de cascada
-  await deactivateUser(profile)
 }
 
 async function createUser() {
@@ -449,7 +491,9 @@ async function createUser() {
       {
         auth: {
           autoRefreshToken: false,
-          persistSession: false // IMPORTANTE: No guardar sesión en localStorage
+          persistSession: false, // IMPORTANTE: No guardar sesión en localStorage
+          detectSessionInUrl: false,
+          storageKey: `avivacheck-temp-user-${Date.now()}-${Math.random().toString(36).slice(2)}`
         }
       }
     )

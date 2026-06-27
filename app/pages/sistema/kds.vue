@@ -129,7 +129,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { Order, OrderItem, OrderWithItems } from '../../types'
 
-definePageMeta({ middleware: ['auth'], layout: 'sistema' })
+definePageMeta({ middleware: ['auth'], layout: 'sistema', requiredAccess: 'kds' })
 useHead({ title: 'Cocina (KDS) - Aviva Check' })
 
 // --- State ---

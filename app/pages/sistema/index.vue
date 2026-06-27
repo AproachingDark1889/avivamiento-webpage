@@ -81,7 +81,7 @@
             block
             rounded="lg"
             :disabled="!auth.canCloseCash"
-            to="/sistema/corte"
+            to="/page/POS/cashClosing"
             prepend-icon="mdi-calculator"
           >
             Realizar Corte

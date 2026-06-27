@@ -11,6 +11,10 @@ export interface Profile {
   role: AppRole
   created_at?: string
   auto_accept_orders?: boolean
+  independent_cash_register?: boolean
+  deactivated_at?: string | null
+  deactivated_by?: string | null
+  deactivation_reason?: string | null
   onboarding_completed?: boolean
 }
 
@@ -63,6 +67,7 @@ export interface Order {
   financial_review_required?: boolean
   total: number
   created_by?: string
+  cash_session_id?: string
   session_id?: string
   paid_with?: number
   change?: number
@@ -84,4 +89,33 @@ export interface OrderItem {
 
 export interface OrderWithItems extends Order {
   items: OrderItem[]
+}
+
+export type CashSessionMode = 'shared' | 'independent'
+export type CashSessionStatus = 'open' | 'pending_validation' | 'closed'
+
+export interface CashSession {
+  id: string
+  org_id: string
+  department_owner_id: string
+  cashier_id?: string | null
+  mode: CashSessionMode
+  status: CashSessionStatus
+  opened_by: string
+  opened_at: string
+  opening_cash: number
+  preclosed_by?: string | null
+  preclosed_at?: string | null
+  approved_by?: string | null
+  approved_at?: string | null
+  closed_at?: string | null
+  cash_counted?: number | null
+  expected_cash?: number | null
+  sales_total: number
+  total_cash_sales: number
+  total_card_sales: number
+  total_transfer_sales: number
+  orders_count: number
+  difference?: number | null
+  notes?: string | null
 }

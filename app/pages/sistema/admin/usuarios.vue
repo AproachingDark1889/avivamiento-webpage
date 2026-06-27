@@ -133,7 +133,7 @@ import type { AppRole, Profile } from '../../../types'
 import { createClient } from '@supabase/supabase-js'
 import { APP_ROLES, getRoleTitle, getRoleColor } from '../../../utils/roles'
 
-definePageMeta({ middleware: ['auth', 'role-leader'], layout: 'sistema' })
+definePageMeta({ middleware: ['auth', 'role-leader'], layout: 'sistema', requiredAccess: 'users' })
 useHead({ title: 'Usuarios - Aviva Check' })
 
 const auth = useAuthStore()
@@ -227,7 +227,9 @@ async function createUser() {
       {
         auth: {
           autoRefreshToken: false,
-          persistSession: false // IMPORTANTE: No guardar sesión en localStorage
+          persistSession: false, // IMPORTANTE: No guardar sesión en localStorage
+          detectSessionInUrl: false,
+          storageKey: `avivacheck-temp-admin-user-${Date.now()}-${Math.random().toString(36).slice(2)}`
         }
       }
     )

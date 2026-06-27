@@ -205,7 +205,7 @@ import type { Order, OrderItem, OrderWithItems } from '../../../types'
 import { formatMoney } from '../../../utils/format'
 import { useAuthStore } from '../../../stores/auth'
 
-definePageMeta({ middleware: ['auth'], layout: 'sistema' })
+definePageMeta({ middleware: ['auth'], layout: 'sistema', requiredAccess: 'kds' })
 useHead({ title: 'Cocina - Aviva Check' })
 
 // --- State ---

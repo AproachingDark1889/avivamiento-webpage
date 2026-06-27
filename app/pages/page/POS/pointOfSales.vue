@@ -65,6 +65,45 @@
             >
               <strong>Modo Offline:</strong> No se detectó conexión a Supabase.
             </v-alert>
+            <v-alert
+              v-else-if="pos.cashSession"
+              class="mb-4"
+              type="success"
+              variant="tonal"
+              density="compact"
+            >
+              <strong>Caja abierta:</strong>
+              {{ cashSessionModeLabel }} - Fondo inicial {{ money(pos.cashSession.opening_cash) }}
+            </v-alert>
+            <v-alert
+              v-else-if="cashSessionChecked"
+              class="mb-4"
+              type="warning"
+              variant="tonal"
+              density="compact"
+            >
+              <strong>Caja cerrada:</strong> abre caja para habilitar cobros.
+            </v-alert>
+
+            <v-btn-toggle
+              v-if="cashModeOptions.length > 1"
+              :model-value="pos.selectedCashMode"
+              color="primary"
+              mandatory
+              density="compact"
+              rounded="lg"
+              class="mb-4"
+              @update:model-value="selectCashMode"
+            >
+              <v-btn
+                v-for="option in cashModeOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                <v-icon start>{{ option.icon }}</v-icon>
+                {{ option.label }}
+              </v-btn>
+            </v-btn-toggle>
           </div>
 
           <!-- Grid Scrollable -->
@@ -206,6 +245,76 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-dialog :model-value="cashSessionDialog" max-width="460" persistent>
+      <v-card rounded="xl" elevation="3">
+        <v-card-title class="d-flex align-center pa-4 bg-primary text-white">
+          <v-icon start>mdi-safe</v-icon>
+          <span class="text-h6 font-weight-bold">Apertura de Caja</span>
+        </v-card-title>
+
+        <v-card-text class="pa-4 pt-6">
+          <v-alert
+            v-if="cashSessionError || pos.cashSessionWarning"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            {{ cashSessionError || pos.cashSessionWarning }}
+          </v-alert>
+
+          <div class="text-body-2 text-medium-emphasis mb-4">
+            Registra el fondo inicial para abrir la caja de este turno.
+          </div>
+
+          <v-btn-toggle
+            v-if="cashModeOptions.length > 1"
+            :model-value="pos.selectedCashMode"
+            color="primary"
+            mandatory
+            density="compact"
+            rounded="lg"
+            class="mb-4"
+            @update:model-value="selectCashMode"
+          >
+            <v-btn
+              v-for="option in cashModeOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              <v-icon start>{{ option.icon }}</v-icon>
+              {{ option.label }}
+            </v-btn>
+          </v-btn-toggle>
+
+          <v-text-field
+            v-model="openingSessionCashInput"
+            label="Fondo inicial"
+            type="number"
+            inputmode="decimal"
+            variant="outlined"
+            prepend-inner-icon="mdi-cash"
+            rounded="lg"
+            autofocus
+          />
+        </v-card-text>
+
+        <v-card-actions class="pa-4 pt-0">
+          <v-btn
+            block
+            color="success"
+            size="large"
+            rounded="lg"
+            :loading="pos.cashSessionLoading"
+            @click="openCashSession"
+          >
+            <v-icon start>mdi-lock-open-variant</v-icon>
+            Abrir Caja
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -218,11 +327,11 @@ import { useToast } from '../../../composables/useToast'
 import { useSupabase } from '../../../composables/useSupabase'
 import { PRODUCT_CATEGORIES } from '../../../utils/categories'
 import { formatMoney } from '../../../utils/format'
-import type { Product } from '../../../types'
+import type { Product, CashSessionMode } from '../../../types'
 import CartPanel from '../../../components/CartPanel.vue' 
 import ProductCard from '../../../components/ProductCard.vue'
 
-definePageMeta({ middleware: ['auth'], layout: 'sistema' })
+definePageMeta({ middleware: ['auth'], layout: 'sistema', requiredAccess: 'pos' })
 useHead({ title: 'Caja - Aviva Check' })
 
 const pos = usePosStore()
@@ -233,6 +342,9 @@ const toast = useToast()
 const cartDrawer = ref(false)
 const paidWithInput = ref('')
 const paymentMethod = ref('cash') 
+const openingSessionCashInput = ref('0')
+const cashSessionChecked = ref(false)
+const cashSessionError = ref('')
 
 // Filters
 const search = ref('')
@@ -240,6 +352,17 @@ const category = ref<string | null>(null)
 
 const paidWith = computed(() => Number(paidWithInput.value || 0))
 const change = computed(() => paidWith.value - pos.total)
+const cashModeOptions = computed(() => {
+  const options = [
+    { value: 'shared' as CashSessionMode, label: 'Caja general', icon: 'mdi-cash-register' },
+  ]
+
+  if (auth.profile?.role === 'cashier' && auth.profile?.independent_cash_register) {
+    options.push({ value: 'independent' as CashSessionMode, label: 'Caja independiente', icon: 'mdi-safe' })
+  }
+
+  return options
+})
 
 // Products from Store (Filtered)
 const products = computed(() => {
@@ -261,6 +384,14 @@ onMounted(async () => {
   pos.initFromStorage()
   // Ensure we have auth profile to load products
   if (!auth.profile) await auth.refreshProfile()
+  pos.setCashMode(auth.profile?.role === 'cashier' && auth.profile?.independent_cash_register ? 'independent' : 'shared')
+  try {
+    await pos.loadCurrentCashSession(pos.selectedCashMode)
+  } catch (e: any) {
+    cashSessionError.value = e?.message ?? String(e)
+  } finally {
+    cashSessionChecked.value = true
+  }
   await productsStore.load({ includeInactive: false })
 })
 
@@ -268,6 +399,10 @@ const money = formatMoney
 
 function handleAddToCart(product: Product) {
   try {
+    if (supabaseDetected.value && !pos.cashSession) {
+      toast.info('Abre caja antes de agregar productos.')
+      return
+    }
     pos.addToCart(product)
   } catch (e) {
     console.error(e)
@@ -283,12 +418,22 @@ const supabaseDetected = computed(() => {
   const sb = getSupabase()
   return !!sb && typeof sb.from === 'function'
 })
+const cashSessionDialog = computed(() => supabaseDetected.value && cashSessionChecked.value && !pos.cashSession)
+const cashSessionModeLabel = computed(() => {
+  if (!pos.cashSession) return pos.selectedCashMode === 'independent' ? 'Caja independiente' : 'Caja general'
+  return pos.cashSession.mode === 'independent' ? 'Caja independiente' : 'Caja compartida'
+})
 
 const cart = computed(() => pos.cart)
 
 // FUNCIÓN BLINDADA DE COBRO
 const procesarCobro = async () => {
   if (pos.cart.length === 0) return
+
+  if (supabaseDetected.value && !pos.cashSession) {
+    toast.info('Abre caja antes de cobrar.')
+    return
+  }
 
   if (paymentMethod.value === 'cash' && paidWith.value < pos.total) {
     if (toast) toast.error('Monto insuficiente')
@@ -318,6 +463,39 @@ const procesarCobro = async () => {
     alert('ERROR: ' + (err?.message || JSON.stringify(err)))
   }
 };
+
+async function openCashSession() {
+  cashSessionError.value = ''
+  const openingCash = Number(openingSessionCashInput.value || 0)
+  if (!Number.isFinite(openingCash) || openingCash < 0) {
+    cashSessionError.value = 'Fondo inicial invalido.'
+    return
+  }
+
+  try {
+    await pos.openCashSession(openingCash, pos.selectedCashMode)
+    toast.success('Caja abierta correctamente')
+  } catch (e: any) {
+    cashSessionError.value = e?.message ?? String(e)
+    toast.error('Error al abrir caja')
+  }
+}
+
+async function selectCashMode(mode: CashSessionMode | null) {
+  if (!mode || mode === pos.selectedCashMode) return
+
+  pos.setCashMode(mode)
+  cashSessionError.value = ''
+  cashSessionChecked.value = false
+
+  try {
+    await pos.loadCurrentCashSession(mode)
+  } catch (e: any) {
+    cashSessionError.value = e?.message ?? String(e)
+  } finally {
+    cashSessionChecked.value = true
+  }
+}
 </script>
 
 <style scoped>

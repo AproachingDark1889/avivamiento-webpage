@@ -130,7 +130,7 @@ import { useProductsStore } from '../../../stores/products'
 import type { Product } from '../../../types'
 import { PRODUCT_CATEGORIES, getCategoryTitle } from '../../../utils/categories'
 
-definePageMeta({ middleware: ['auth'], layout: 'sistema' })
+definePageMeta({ middleware: ['auth'], layout: 'sistema', requiredAccess: 'products' })
 useHead({ title: 'Productos - Aviva Check' })
 
 const toast = useToast()

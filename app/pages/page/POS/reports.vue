@@ -252,7 +252,7 @@ import { useAuthStore } from '../../../stores/auth'
 import { useSupabase } from '../../../composables/useSupabase'
 import { formatMoney } from '../../../utils/format'
 
-definePageMeta({ middleware: ['auth', 'role-leader'], layout: 'sistema' })
+definePageMeta({ middleware: ['auth', 'role-leader'], layout: 'sistema', requiredAccess: 'reports' })
 useHead({ title: 'Reportes - Aviva Check' })
 
 // Auth store

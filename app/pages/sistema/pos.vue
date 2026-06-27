@@ -211,7 +211,7 @@ import type { Product } from '../../types'
 import CartPanel from '../../components/CartPanel.vue' 
 import ProductCard from '../../components/ProductCard.vue'
 
-definePageMeta({ middleware: ['auth'], layout: 'sistema' })
+definePageMeta({ middleware: ['auth'], layout: 'sistema', requiredAccess: 'pos' })
 useHead({ title: 'Caja - Aviva Check' })
 
 const pos = usePosStore()

@@ -57,12 +57,10 @@ export const useAuthStore = defineStore('auth', {
         },
 
         canAccessPos(): boolean {
-            // Flexible: Cashier, Kitchen, Leader, Admin, Pastor
-            return ['cashier', 'kitchen', 'leader', 'pastor', 'super_admin'].includes(this.role || '')
+            return ['cashier', 'leader', 'pastor', 'super_admin'].includes(this.role || '')
         },
         canAccessKds(): boolean {
-            // Flexible: Cashier, Kitchen, Leader, Admin, Pastor
-            return ['cashier', 'kitchen', 'leader', 'pastor', 'super_admin'].includes(this.role || '')
+            return ['kitchen', 'leader', 'pastor', 'super_admin'].includes(this.role || '')
         },
         canManageUsers(): boolean {
             return ['leader', 'pastor', 'super_admin'].includes(this.role || '')
@@ -166,11 +164,24 @@ export const useAuthStore = defineStore('auth', {
             try {
                 const { data, error } = await sb
                     .from('profiles')
-                    .select('id,email,display_name,org_id,owner_id,role,created_at,auto_accept_orders,onboarding_completed')
+                    .select('id,email,display_name,org_id,owner_id,role,created_at,auto_accept_orders,independent_cash_register,deactivated_at,onboarding_completed')
                     .eq('id', uid)
                     .single()
 
                 if (error) throw error
+
+                if (data?.deactivated_at) {
+                    this.error = 'Usuario desactivado. Contacta a tu lider.'
+                    try {
+                        await sb.auth.signOut()
+                    } catch {
+                        // no-op
+                    }
+                    this.session = null
+                    this.user = null
+                    this.profile = null
+                    return
+                }
 
                 // Si no hay rol, tratamos como no autorizado
                 if (!data?.role) {
@@ -187,6 +198,8 @@ export const useAuthStore = defineStore('auth', {
                     role: data.role as AppRole,
                     created_at: data.created_at ?? undefined,
                     auto_accept_orders: data.auto_accept_orders ?? false,
+                    independent_cash_register: data.independent_cash_register ?? false,
+                    deactivated_at: data.deactivated_at ?? null,
                     onboarding_completed: data.onboarding_completed ?? false,
                 }
             } catch {
@@ -212,6 +225,9 @@ export const useAuthStore = defineStore('auth', {
 
                 if (this.user?.id) {
                     await this.refreshProfile()
+                    if (!this.profile) {
+                        throw new Error(this.error || 'Perfil no autorizado')
+                    }
                     await this.ensurePendingTenant()
                 }
             } catch (e: any) {

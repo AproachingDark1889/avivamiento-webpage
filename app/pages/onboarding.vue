@@ -497,12 +497,14 @@ async function createLeader() {
     config.public.supabaseUrl,
     config.public.supabaseKey,
     {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false,
+          storageKey: `avivacheck-temp-onboarding-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        }
       }
-    }
-  )
+    )
 
   // B. Crear usuario en auth (sin afectar sesión actual)
   const { data: authData, error: authError } = await tempSupabase.auth.signUp({

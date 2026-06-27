@@ -175,7 +175,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-definePageMeta({ middleware: ['auth', 'role-leader'], layout: 'sistema' })
+definePageMeta({ middleware: ['auth', 'role-leader'], layout: 'sistema', requiredAccess: 'reports' })
 useHead({ title: 'Reportes - Aviva Check' })
 
 const loading = ref(false)

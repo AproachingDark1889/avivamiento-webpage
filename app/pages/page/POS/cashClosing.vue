@@ -6,227 +6,190 @@
       </h1>
       <v-spacer />
       <v-btn-toggle v-model="activeTab" mandatory color="primary" density="compact" rounded="lg" class="ml-2">
-        <v-btn value="current" prepend-icon="mdi-calculator">Corte Actual</v-btn>
+        <v-btn value="current" prepend-icon="mdi-calculator">Actual</v-btn>
         <v-btn value="history" prepend-icon="mdi-history">Historial</v-btn>
       </v-btn-toggle>
     </div>
 
-    <!-- ═══════════════════════════════ -->
-    <!-- TAB: Corte Actual              -->
-    <!-- ═══════════════════════════════ -->
     <v-card v-if="activeTab === 'current'" elevation="2" class="pa-4 flex-grow-1 overflow-y-auto" rounded="xl" border>
       <div class="d-flex align-center mb-4">
-        <div class="text-h6 font-weight-bold">Registro de Cierre</div>
+        <div class="text-h6 font-weight-bold">Sesion de Caja</div>
+        <v-spacer />
+        <v-btn color="primary" variant="text" icon="mdi-refresh" :loading="loading" @click="loadAll" />
       </div>
 
-      <v-row>
-        <v-col cols="12" md="4">
-          <v-text-field
-            v-model="date"
-            label="Fecha"
-            type="date"
-            variant="outlined"
-            density="compact"
-          />
-        </v-col>
-
-        <v-col cols="12" md="4">
-          <v-text-field
-            v-model="openingCashInput"
-            label="Efectivo inicial (cambio)"
-            type="number"
-            inputmode="decimal"
-            variant="outlined"
-            density="compact"
-          />
-        </v-col>
-
-        <v-col cols="12" md="4">
-          <v-text-field
-            v-model="cashCountedInput"
-            label="Efectivo contado"
-            type="number"
-            inputmode="decimal"
-            variant="outlined"
-            density="compact"
-          />
-        </v-col>
-      </v-row>
-
-      <v-row>
-        <v-col cols="12" md="4">
-          <v-btn
-            color="primary"
-            block
-            :loading="loading"
-            @click="calculate"
-            prepend-icon="mdi-calculator"
-            height="40"
-          >
-            Calcular
-          </v-btn>
-        </v-col>
-
-        <v-col cols="12" md="8" class="d-flex align-center">
-          <v-alert v-if="warning" type="warning" variant="tonal" class="mb-0 py-2" density="compact" style="width: 100%;">
-            {{ warning }}
-          </v-alert>
-        </v-col>
-      </v-row>
-      
-      <v-divider class="my-6" />
-      
-      <div class="text-h6 font-weight-bold mb-4">Resumen</div>
-
-      <v-row>
-        <v-col cols="12" md="3">
-          <v-card elevation="0" class="pa-4 border bg-grey-lighten-5">
-            <div class="text-caption font-weight-bold text-medium-emphasis">Ventas del día</div>
-            <div class="text-h5 font-weight-black text-primary">{{ money(salesTotal) }}</div>
-            <div class="text-caption text-medium-emphasis mt-1">{{ ordersCount }} órdenes</div>
-          </v-card>
-        </v-col>
-
-        <v-col cols="12" md="3">
-          <v-card elevation="0" class="pa-4 border bg-grey-lighten-5">
-            <div class="text-caption font-weight-bold text-medium-emphasis">Efectivo esperado</div>
-            <div class="text-h5 font-weight-black text-secondary">{{ money(expectedCash) }}</div>
-          </v-card>
-        </v-col>
-
-        <v-col cols="12" md="3">
-          <v-card elevation="0" class="pa-4 border bg-grey-lighten-5">
-            <div class="text-caption font-weight-bold text-medium-emphasis">Efectivo contado</div>
-            <div class="text-h5 font-weight-black">{{ money(cashCounted) }}</div>
-          </v-card>
-        </v-col>
-
-        <v-col cols="12" md="3">
-          <v-card elevation="0" class="pa-4 border" :class="difference < 0 ? 'bg-red-lighten-5' : 'bg-green-lighten-5'">
-            <div class="text-caption font-weight-bold text-medium-emphasis">Diferencia</div>
-            <div class="text-h5 font-weight-black" :class="difference < 0 ? 'text-error' : 'text-success'">{{ money(difference) }}</div>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- Desglose por método de pago -->
-      <v-divider class="my-6" />
-      <div class="text-h6 font-weight-bold mb-4">Desglose por Método de Pago</div>
-
-      <v-row>
-        <v-col cols="12" md="4">
-          <v-card elevation="0" class="pa-4 border bg-green-lighten-5">
-            <div class="d-flex align-center mb-1">
-              <v-icon color="green" size="20" class="mr-2">mdi-cash</v-icon>
-              <span class="text-caption font-weight-bold text-medium-emphasis">Efectivo</span>
-            </div>
-            <div class="text-h5 font-weight-black text-green">{{ money(cashSales) }}</div>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="4">
-          <v-card elevation="0" class="pa-4 border bg-blue-lighten-5">
-            <div class="d-flex align-center mb-1">
-              <v-icon color="blue" size="20" class="mr-2">mdi-credit-card</v-icon>
-              <span class="text-caption font-weight-bold text-medium-emphasis">Tarjeta</span>
-            </div>
-            <div class="text-h5 font-weight-black text-blue">{{ money(cardSales) }}</div>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="4">
-          <v-card elevation="0" class="pa-4 border bg-purple-lighten-5">
-            <div class="d-flex align-center mb-1">
-              <v-icon color="purple" size="20" class="mr-2">mdi-bank-transfer</v-icon>
-              <span class="text-caption font-weight-bold text-medium-emphasis">Transferencia</span>
-            </div>
-            <div class="text-h5 font-weight-black text-purple">{{ money(transferSales) }}</div>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- Contexto Operativo -->
-      <v-divider class="my-6" />
-      <div class="text-h6 font-weight-bold mb-4">Contexto Operativo (Órdenes Pagadas)</div>
-
-      <v-row>
-        <v-col cols="12" md="4">
-          <v-card elevation="0" class="pa-3 border bg-grey-lighten-5 d-flex justify-space-between align-center">
-            <span class="text-caption font-weight-bold text-medium-emphasis">Entregadas en Cocina</span>
-            <span class="text-h6 font-weight-black">{{ opCompleted }}</span>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="4">
-          <v-card elevation="0" class="pa-3 border bg-grey-lighten-5 d-flex justify-space-between align-center">
-            <span class="text-caption font-weight-bold text-medium-emphasis">Pendientes</span>
-            <span class="text-h6 font-weight-black">{{ opPending }}</span>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="4">
-          <v-card elevation="0" class="pa-3 border bg-orange-lighten-5 d-flex justify-space-between align-center">
-            <span class="text-caption font-weight-bold text-orange-darken-3">Incidencias</span>
-            <span class="text-h6 font-weight-black text-orange-darken-3">{{ opIncidences }}</span>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- Notas -->
-      <v-divider class="my-6" />
-      <v-textarea
-        v-model="notes"
-        label="Notas del cierre (opcional)"
-        variant="outlined"
-        rows="2"
-        density="compact"
-        placeholder="Ej: Faltaron $50, el cliente X no pagó..."
-      />
-
-      <!-- Estado de corrección -->
-      <v-alert v-if="isCorrectionMode" type="info" variant="tonal" class="mb-4" density="compact">
-        <strong>Corte ya registrado.</strong> Puedes corregirlo indicando el motivo.
+      <v-alert v-if="warning" type="warning" variant="tonal" class="mb-4" density="compact">
+        {{ warning }}
       </v-alert>
 
-      <!-- Campo revision_note (solo en modo corrección) -->
-      <v-textarea
-        v-if="isCorrectionMode"
-        v-model="revisionNote"
-        label="Motivo de corrección (obligatorio)"
-        variant="outlined"
-        rows="2"
+      <v-btn-toggle
+        v-if="cashModeOptions.length > 1"
+        :model-value="selectedCashMode"
+        color="primary"
+        mandatory
         density="compact"
-        placeholder="Ej: Se recontó el efectivo, faltaban monedas..."
-        :rules="[v => !!v?.trim() || 'Motivo requerido para corregir']"
-        class="mb-4"
-      />
-
-      <!-- Alerta de duplicados -->
-      <v-alert v-if="hasDuplicates" type="error" variant="tonal" class="mb-4" density="compact">
-        ⚠️ Existen cortes duplicados para esta fecha. Requiere revisión administrativa.
-      </v-alert>
-
-      <v-btn
-        :color="isCorrectionMode ? 'warning' : 'success'"
-        block
-        size="large"
-        :loading="saving"
-        :disabled="!canSave"
-        @click="saveClosure"
         rounded="lg"
-        class="font-weight-bold text-h6"
+        class="mb-4"
+        @update:model-value="selectCashMode"
       >
-        <v-icon start>{{ isCorrectionMode ? 'mdi-pencil-circle' : 'mdi-content-save-check' }}</v-icon>
-        {{ isCorrectionMode ? 'Corregir corte' : 'Guardar Corte de Caja' }}
-      </v-btn>
+        <v-btn
+          v-for="option in cashModeOptions"
+          :key="option.value"
+          :value="option.value"
+        >
+          <v-icon start>{{ option.icon }}</v-icon>
+          {{ option.label }}
+        </v-btn>
+      </v-btn-toggle>
 
-      <div class="mt-4 text-center text-caption text-medium-emphasis">
-        "Su amor es el mismo: ayer, hoy y por los siglos." — Hebreos 13:8
-      </div>
+      <v-alert v-if="!currentSession && !loading" type="info" variant="tonal" class="mb-4">
+        No hay caja abierta para tu contexto actual.
+        <template #append>
+          <v-btn color="primary" variant="tonal" size="small" @click="goToPos">Ir al POS</v-btn>
+        </template>
+      </v-alert>
+
+      <template v-if="currentSession">
+        <v-row class="mb-4">
+          <v-col cols="12" md="3">
+            <v-card elevation="0" class="pa-4 border bg-grey-lighten-5">
+              <div class="text-caption font-weight-bold text-medium-emphasis">Modo</div>
+              <div class="text-h6 font-weight-black text-primary">{{ modeLabel(currentSession.mode) }}</div>
+            </v-card>
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-card elevation="0" class="pa-4 border bg-grey-lighten-5">
+              <div class="text-caption font-weight-bold text-medium-emphasis">Estado</div>
+              <div class="text-h6 font-weight-black">{{ statusLabel(currentSession.status) }}</div>
+            </v-card>
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-card elevation="0" class="pa-4 border bg-grey-lighten-5">
+              <div class="text-caption font-weight-bold text-medium-emphasis">Apertura</div>
+              <div class="text-body-1 font-weight-bold">{{ formatDateTime(currentSession.opened_at) }}</div>
+            </v-card>
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-card elevation="0" class="pa-4 border bg-grey-lighten-5">
+              <div class="text-caption font-weight-bold text-medium-emphasis">Fondo inicial</div>
+              <div class="text-h6 font-weight-black text-secondary">{{ money(currentSession.opening_cash) }}</div>
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <v-row>
+          <v-col cols="12" md="3">
+            <v-card elevation="0" class="pa-4 border bg-grey-lighten-5">
+              <div class="text-caption font-weight-bold text-medium-emphasis">Ventas</div>
+              <div class="text-h5 font-weight-black text-primary">{{ money(salesTotal) }}</div>
+              <div class="text-caption text-medium-emphasis mt-1">{{ ordersCount }} ordenes</div>
+            </v-card>
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-card elevation="0" class="pa-4 border bg-green-lighten-5">
+              <div class="text-caption font-weight-bold text-medium-emphasis">Efectivo esperado</div>
+              <div class="text-h5 font-weight-black text-green">{{ money(expectedCash) }}</div>
+            </v-card>
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-card elevation="0" class="pa-4 border bg-blue-lighten-5">
+              <div class="text-caption font-weight-bold text-medium-emphasis">Tarjeta</div>
+              <div class="text-h5 font-weight-black text-blue">{{ money(cardSales) }}</div>
+            </v-card>
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-card elevation="0" class="pa-4 border bg-purple-lighten-5">
+              <div class="text-caption font-weight-bold text-medium-emphasis">Transferencia</div>
+              <div class="text-h5 font-weight-black text-purple">{{ money(transferSales) }}</div>
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <v-divider class="my-6" />
+
+        <v-alert v-if="currentSession.status === 'pending_validation'" type="warning" variant="tonal" class="mb-4">
+          Esta caja esta en validacion. No se pueden registrar mas ventas en esta sesion.
+        </v-alert>
+
+        <template v-if="currentSession.status === 'open'">
+          <v-row>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="cashCountedInput"
+                label="Efectivo contado"
+                type="number"
+                inputmode="decimal"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" md="8">
+              <v-textarea
+                v-model="notes"
+                label="Notas del cierre (opcional)"
+                rows="1"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+          </v-row>
+
+          <v-btn
+            color="success"
+            block
+            size="large"
+            :loading="saving"
+            :disabled="!canPreClose"
+            @click="preCloseCurrentSession"
+            rounded="lg"
+            class="font-weight-bold text-h6"
+          >
+            <v-icon start>mdi-lock-check</v-icon>
+            Pre-cerrar Caja
+          </v-btn>
+        </template>
+      </template>
+
+      <template v-if="canApprove && pendingSessions.length > 0">
+        <v-divider class="my-6" />
+        <div class="text-h6 font-weight-bold mb-4">Cajas Pendientes de Validacion</div>
+
+        <v-row>
+          <v-col v-for="session in pendingSessions" :key="session.id" cols="12" md="6">
+            <v-card elevation="0" class="pa-4 border bg-orange-lighten-5">
+              <div class="d-flex align-center mb-3">
+                <v-chip size="small" color="orange" variant="flat" class="font-weight-bold">
+                  {{ modeLabel(session.mode) }}
+                </v-chip>
+                <v-spacer />
+                <span class="text-caption text-medium-emphasis">{{ formatDateTime(session.preclosed_at || session.opened_at) }}</span>
+              </div>
+              <div class="d-flex justify-space-between text-body-2 mb-1">
+                <span>Ventas</span>
+                <strong>{{ money(session.sales_total) }}</strong>
+              </div>
+              <div class="d-flex justify-space-between text-body-2 mb-1">
+                <span>Efectivo esperado</span>
+                <strong>{{ money(session.expected_cash || 0) }}</strong>
+              </div>
+              <div class="d-flex justify-space-between text-body-2 mb-3">
+                <span>Diferencia</span>
+                <strong :class="Number(session.difference || 0) < 0 ? 'text-error' : 'text-success'">
+                  {{ money(session.difference || 0) }}
+                </strong>
+              </div>
+              <v-btn color="primary" block rounded="lg" :loading="saving" @click="approveSession(session.id)">
+                Aprobar cierre
+              </v-btn>
+            </v-card>
+          </v-col>
+        </v-row>
+      </template>
     </v-card>
 
-    <!-- ═══════════════════════════════ -->
-    <!-- TAB: Historial                 -->
-    <!-- ═══════════════════════════════ -->
     <v-card v-if="activeTab === 'history'" elevation="2" class="pa-4 flex-grow-1 overflow-y-auto" rounded="xl" border>
       <div class="d-flex align-center mb-4">
-        <div class="text-h6 font-weight-bold">Historial de Cortes</div>
+        <div class="text-h6 font-weight-bold">Historial de Sesiones</div>
         <v-spacer />
         <v-btn color="primary" variant="text" icon="mdi-refresh" :loading="historyLoading" @click="loadHistory" />
       </div>
@@ -235,41 +198,39 @@
         {{ historyWarning }}
       </v-alert>
 
-      <v-table v-if="closures.length > 0" density="compact" hover>
+      <v-table v-if="historySessions.length > 0" density="compact" hover>
         <thead>
           <tr>
-            <th class="text-left">Fecha</th>
+            <th class="text-left">Apertura</th>
+            <th class="text-left">Modo</th>
             <th class="text-right">Ventas</th>
             <th class="text-right">Efectivo</th>
             <th class="text-right">Tarjeta</th>
             <th class="text-right">Transf.</th>
             <th class="text-right">Diferencia</th>
-            <th class="text-right">Órdenes</th>
-            <th class="text-left">Notas</th>
+            <th class="text-right">Ordenes</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="c in closures" :key="c.id">
-            <td class="font-weight-bold">{{ formatDate(c.closure_date) }}</td>
-            <td class="text-right font-weight-bold text-primary">{{ money(c.sales_total) }}</td>
-            <td class="text-right text-green">{{ money(c.total_cash_sales) }}</td>
-            <td class="text-right text-blue">{{ money(c.total_card_sales) }}</td>
-            <td class="text-right text-purple">{{ money(c.total_transfer_sales) }}</td>
-            <td class="text-right font-weight-bold" :class="c.difference < 0 ? 'text-error' : 'text-success'">
-              {{ money(c.difference) }}
+          <tr v-for="session in historySessions" :key="session.id">
+            <td class="font-weight-bold">{{ formatDateTime(session.opened_at) }}</td>
+            <td>{{ modeLabel(session.mode) }}</td>
+            <td class="text-right font-weight-bold text-primary">{{ money(session.sales_total) }}</td>
+            <td class="text-right text-green">{{ money(session.total_cash_sales) }}</td>
+            <td class="text-right text-blue">{{ money(session.total_card_sales) }}</td>
+            <td class="text-right text-purple">{{ money(session.total_transfer_sales) }}</td>
+            <td class="text-right font-weight-bold" :class="Number(session.difference || 0) < 0 ? 'text-error' : 'text-success'">
+              {{ money(session.difference || 0) }}
             </td>
-            <td class="text-right">{{ c.orders_count }}</td>
-            <td class="text-caption text-medium-emphasis" style="max-width: 200px;">
-              {{ c.notes || '—' }}
-            </td>
+            <td class="text-right">{{ session.orders_count }}</td>
           </tr>
         </tbody>
       </v-table>
 
       <div v-else-if="!historyLoading" class="text-center pa-8 text-medium-emphasis">
         <v-icon size="64" class="mb-4">mdi-clipboard-text-clock-outline</v-icon>
-        <div class="text-h6">Sin cortes registrados</div>
-        <div class="text-body-2 mt-1">Los cortes guardados aparecerán aquí</div>
+        <div class="text-h6">Sin sesiones cerradas</div>
+        <div class="text-body-2 mt-1">Los cortes aprobados apareceran aqui</div>
       </div>
     </v-card>
   </div>
@@ -281,96 +242,82 @@ import { useAuthStore } from '../../../stores/auth'
 import { useToast } from '../../../composables/useToast'
 import { useSupabase } from '../../../composables/useSupabase'
 import { formatMoney } from '../../../utils/format'
+import type { CashSession, CashSessionMode } from '../../../types'
 
-definePageMeta({ middleware: ['auth', 'role-cashier'], layout: 'sistema' })
+definePageMeta({ middleware: ['auth', 'role-cashier'], layout: 'sistema', requiredAccess: 'cash' })
 useHead({ title: 'Corte de Caja - Aviva Check' })
 
 const auth = useAuthStore()
 const toast = useToast()
+
+const activeTab = ref('current')
 const loading = ref(false)
 const saving = ref(false)
 const warning = ref('')
+const historyLoading = ref(false)
+const historyWarning = ref('')
 
-const activeTab = ref('current')
-const date = ref('')
+const currentSession = ref<CashSession | null>(null)
+const pendingSessions = ref<CashSession[]>([])
+const historySessions = ref<CashSession[]>([])
+const selectedCashMode = ref<CashSessionMode>('shared')
+
+const cashCountedInput = ref('0')
 const notes = ref('')
 
-const openingCashInput = ref<string>('0')
-const cashCountedInput = ref<string>('0')
-
+const ordersCount = ref(0)
 const salesTotal = ref(0)
 const cashSales = ref(0)
 const cardSales = ref(0)
 const transferSales = ref(0)
-const ordersCount = ref(0)
 
-const opCompleted = ref(0)
-const opPending = ref(0)
-const opIncidences = ref(0)
+const expectedCash = computed(() => Number(currentSession.value?.opening_cash || 0) + cashSales.value)
+const cashCounted = computed(() => Number(cashCountedInput.value || 0))
+const canApprove = computed(() => ['leader', 'pastor', 'super_admin'].includes(auth.role || ''))
+const cashModeOptions = computed(() => {
+  const options = [
+    { value: 'shared' as CashSessionMode, label: 'Caja general', icon: 'mdi-cash-register' },
+  ]
 
-// Correction mode state
-const existingClosureId = ref<string | null>(null)
-const hasDuplicates = ref(false)
-const revisionNote = ref('')
-const hasCalculated = ref(false)
+  if (auth.profile?.role === 'cashier' && auth.profile?.independent_cash_register) {
+    options.push({ value: 'independent' as CashSessionMode, label: 'Caja independiente', icon: 'mdi-safe' })
+  }
 
-const isCorrectionMode = computed(() => existingClosureId.value !== null && !hasDuplicates.value)
-
-// History
-const closures = ref<any[]>([])
-const historyLoading = ref(false)
-const historyWarning = ref('')
-
-function todayISO() {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+  return options
+})
+const canPreClose = computed(() => {
+  if (saving.value) return false
+  if (!currentSession.value || currentSession.value.status !== 'open') return false
+  return Number.isFinite(cashCounted.value) && cashCounted.value >= 0
+})
 
 onMounted(async () => {
   await auth.init()
-  date.value = todayISO()
-  calculate()
+  selectedCashMode.value = auth.profile?.role === 'cashier' && auth.profile?.independent_cash_register ? 'independent' : 'shared'
+  await loadAll()
 })
 
-// Reset state when user picks a different date — forces re-Calculate
-watch(date, () => {
-  hasCalculated.value = false
-  existingClosureId.value = null
-  hasDuplicates.value = false
-  revisionNote.value = ''
-})
-
-const money = (amount: number) => formatMoney(amount || 0)
-
-function num(v: string) {
-  const n = Number(v || 0)
-  return Number.isFinite(n) ? n : 0
-}
-
-function formatDate(d: string) {
-  if (!d) return '—'
-  return new Date(d + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-const openingCash = computed(() => num(openingCashInput.value))
-const cashCounted = computed(() => num(cashCountedInput.value))
-const expectedCash = computed(() => openingCash.value + cashSales.value)
-const difference = computed(() => cashCounted.value - expectedCash.value)
-
-const canSave = computed(() => {
-  if (saving.value) return false
-  if (!date.value) return false
-  if (!hasCalculated.value) return false
-  if (hasDuplicates.value) return false
-  if (isCorrectionMode.value && !revisionNote.value.trim()) return false
-  return true
+watch(activeTab, async (tab) => {
+  if (tab === 'history') await loadHistory()
 })
 
 function getSupabase() {
   try { return useSupabase() } catch { return null }
+}
+
+function normalizeSession(raw: any): CashSession {
+  return {
+    ...raw,
+    opening_cash: Number(raw.opening_cash ?? 0),
+    cash_counted: raw.cash_counted == null ? null : Number(raw.cash_counted),
+    expected_cash: raw.expected_cash == null ? null : Number(raw.expected_cash),
+    sales_total: Number(raw.sales_total ?? 0),
+    total_cash_sales: Number(raw.total_cash_sales ?? 0),
+    total_card_sales: Number(raw.total_card_sales ?? 0),
+    total_transfer_sales: Number(raw.total_transfer_sales ?? 0),
+    orders_count: Number(raw.orders_count ?? 0),
+    difference: raw.difference == null ? null : Number(raw.difference),
+  } as CashSession
 }
 
 function currentDepartmentOwnerId() {
@@ -380,151 +327,188 @@ function currentDepartmentOwnerId() {
   return profile.owner_id || null
 }
 
-function shouldFilterByDepartment() {
-  const role = auth.profile?.role
-  return role !== 'pastor' && role !== 'super_admin'
+function money(amount: number) {
+  return formatMoney(amount || 0)
 }
 
-// Vista previa aproximada: usa hora local del navegador.
-// Los totales finales los calcula el RPC save_cash_closure con TZ America/Mexico_City.
-// En bordes de medianoche puede haber diferencias menores entre preview y cálculo real.
-function dayRangeISO(d: string) {
-  const start = new Date(`${d}T00:00:00`)
-  const end = new Date(`${d}T23:59:59.999`)
-  return { startISO: start.toISOString(), endISO: end.toISOString() }
+function modeLabel(mode: string) {
+  return mode === 'independent' ? 'Caja independiente' : 'Caja compartida'
 }
 
-async function calculate() {
+function statusLabel(status: string) {
+  if (status === 'open') return 'Abierta'
+  if (status === 'pending_validation') return 'Pendiente de validacion'
+  if (status === 'closed') return 'Cerrada'
+  return status
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '-'
+  return d.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function goToPos() {
+  navigateTo('/page/POS/pointOfSales')
+}
+
+async function loadAll() {
+  await loadCurrentSession()
+  await loadPendingSessions()
+}
+
+async function loadCurrentSession() {
   warning.value = ''
-  existingClosureId.value = null
-  hasDuplicates.value = false
-  hasCalculated.value = false
-  revisionNote.value = ''
-
-  const sb = getSupabase()
-  if (!sb?.from) {
-    warning.value = 'No se detectó Supabase en runtime.'
-    return
-  }
-
-  if (!date.value) {
-    warning.value = 'Selecciona una fecha.'
-    return
-  }
-
   loading.value = true
+  const sb = getSupabase()
+
+  if (!sb?.rpc) {
+    warning.value = 'Supabase no detectado.'
+    loading.value = false
+    return
+  }
+
   try {
-    const { startISO, endISO } = dayRangeISO(date.value)
-    const orgId = auth.profile?.org_id
-    const deptOwnerId = currentDepartmentOwnerId()
-    if (!orgId) {
-      warning.value = 'Tu usuario no tiene organizacion asignada.'
-      return
-    }
-
-    // Vista previa de órdenes (solo para mostrar en pantalla)
-    let ordersQuery = sb
-      .from('orders')
-      .select('total,payment_method,financial_review_required,operational_status')
-      .eq('org_id', orgId)
-      .eq('financial_status', 'paid')
-      .gte('created_at', startISO)
-      .lte('created_at', endISO)
-      .limit(5000)
-
-    if (deptOwnerId) {
-      ordersQuery = ordersQuery.eq('department_owner_id', deptOwnerId)
-    }
-
-    const { data, error } = await ordersQuery
-
+    const { data, error } = await sb.rpc('get_current_cash_session', {
+      p_mode: selectedCashMode.value,
+    })
     if (error) throw error
 
-    const rows = data ?? []
-    ordersCount.value = rows.length
-    salesTotal.value = rows.reduce((sum: number, r: any) => sum + Number(r.total ?? 0), 0)
-    
-    // Desglose por método de pago
-    cashSales.value = rows
-      .filter((r: any) => r.payment_method === 'cash' || !r.payment_method)
-      .reduce((sum: number, r: any) => sum + Number(r.total ?? 0), 0)
-    
-    cardSales.value = rows
-      .filter((r: any) => r.payment_method === 'card')
-      .reduce((sum: number, r: any) => sum + Number(r.total ?? 0), 0)
-    
-    transferSales.value = rows
-      .filter((r: any) => r.payment_method === 'transfer')
-      .reduce((sum: number, r: any) => sum + Number(r.total ?? 0), 0)
-
-    // Contexto operativo
-    opCompleted.value = rows.filter((r: any) => r.operational_status === 'completed').length
-    opPending.value = rows.filter((r: any) => r.operational_status === 'pending').length
-    opIncidences.value = rows.filter((r: any) => r.operational_status === 'kitchen_rejected' || r.operational_status === 'kitchen_cancelled').length
-
-    const hasReviewRequired = rows.some((r: any) => r.financial_review_required === true)
-    if (hasReviewRequired) {
-      warning.value = '⚠️ Atención: Estas incidencias no descuentan dinero automáticamente. Si se devolvió efectivo, documenta la explicación en notas del corte.'
-    }
-
-    // Detectar corte existente por org_id + closure_date
-    // Filtro defensivo: no depender solo de RLS para aislar por org
-    const { data: existing, error: existErr } = await sb
-      .from('cash_closures')
-      .select('id, closed_by, opening_cash, cash_counted, notes')
-      .eq('org_id', orgId)
-      .eq('department_owner_id', deptOwnerId)
-      .eq('closure_date', date.value)
-      .order('created_at', { ascending: false })
-
-    if (!existErr && existing) {
-      if (existing.length > 1) {
-        hasDuplicates.value = true
-        warning.value = '⚠️ Existen cortes duplicados para esta fecha. Requiere revisión administrativa.'
-      } else if (existing.length === 1) {
-        existingClosureId.value = existing[0].id
-        openingCashInput.value = String(existing[0].opening_cash ?? 0)
-        cashCountedInput.value = String(existing[0].cash_counted ?? 0)
-        notes.value = existing[0].notes ?? ''
-      }
-    }
-
-    hasCalculated.value = true
-
+    currentSession.value = data?.session ? normalizeSession(data.session) : null
+    await loadSessionPreview()
   } catch (e: any) {
-    warning.value = `Error: ${e?.message ?? String(e)}`
+    warning.value = e?.message ?? String(e)
   } finally {
     loading.value = false
   }
 }
 
-async function saveClosure() {
-  const sb = getSupabase()
-  if (!sb?.rpc) {
-    toast.error('Supabase no detectado. No se puede guardar.')
+async function selectCashMode(mode: CashSessionMode | null) {
+  if (!mode || mode === selectedCashMode.value) return
+  selectedCashMode.value = mode
+  warning.value = ''
+  await loadAll()
+}
+
+async function loadSessionPreview() {
+  ordersCount.value = 0
+  salesTotal.value = 0
+  cashSales.value = 0
+  cardSales.value = 0
+  transferSales.value = 0
+
+  const session = currentSession.value
+  if (!session) return
+
+  if (session.status !== 'open') {
+    ordersCount.value = session.orders_count
+    salesTotal.value = session.sales_total
+    cashSales.value = session.total_cash_sales
+    cardSales.value = session.total_card_sales
+    transferSales.value = session.total_transfer_sales
+    cashCountedInput.value = String(session.cash_counted ?? 0)
     return
   }
 
+  const sb = getSupabase()
+  if (!sb?.from) return
+
+  const { data, error } = await sb
+    .from('orders')
+    .select('total,payment_method')
+    .eq('cash_session_id', session.id)
+    .eq('financial_status', 'paid')
+    .limit(5000)
+
+  if (error) throw error
+
+  const rows = data ?? []
+  ordersCount.value = rows.length
+  salesTotal.value = rows.reduce((sum: number, row: any) => sum + Number(row.total ?? 0), 0)
+  cashSales.value = rows
+    .filter((row: any) => row.payment_method === 'cash' || !row.payment_method)
+    .reduce((sum: number, row: any) => sum + Number(row.total ?? 0), 0)
+  cardSales.value = rows
+    .filter((row: any) => row.payment_method === 'card')
+    .reduce((sum: number, row: any) => sum + Number(row.total ?? 0), 0)
+  transferSales.value = rows
+    .filter((row: any) => row.payment_method === 'transfer')
+    .reduce((sum: number, row: any) => sum + Number(row.total ?? 0), 0)
+}
+
+async function loadPendingSessions() {
+  pendingSessions.value = []
+  if (!canApprove.value) return
+
+  const sb = getSupabase()
+  if (!sb?.from) return
+
+  let query = sb
+    .from('cash_sessions')
+    .select('*')
+    .eq('status', 'pending_validation')
+    .order('preclosed_at', { ascending: false })
+
+  if (auth.role === 'leader') {
+    const deptOwnerId = currentDepartmentOwnerId()
+    if (deptOwnerId) query = query.eq('department_owner_id', deptOwnerId)
+  } else if (auth.profile?.org_id && auth.role !== 'super_admin') {
+    query = query.eq('org_id', auth.profile.org_id)
+  }
+
+  const { data, error } = await query.limit(50)
+  if (error) {
+    warning.value = error.message
+    return
+  }
+
+  pendingSessions.value = (data ?? []).map(normalizeSession)
+}
+
+async function preCloseCurrentSession() {
+  const session = currentSession.value
+  if (!session) return
+
+  const sb = getSupabase()
+  if (!sb?.rpc) return
+
   saving.value = true
   try {
-    const { data, error } = await sb.rpc('save_cash_closure', {
-      p_closure_date: date.value,
-      p_opening_cash: openingCash.value,
+    const { data, error } = await sb.rpc('pre_close_cash_session', {
+      p_session_id: session.id,
       p_cash_counted: cashCounted.value,
       p_notes: notes.value.trim() || null,
-      p_revision_note: isCorrectionMode.value ? revisionNote.value.trim() : null
     })
-
     if (error) throw error
 
-    const action = data?.action === 'corrected' ? 'Corte corregido' : 'Corte guardado'
-    toast.success(`${action} correctamente`)
-    revisionNote.value = ''
-
-    // Recargar estado para reflejar el corte recién guardado
-    await calculate()
+    currentSession.value = data?.session ? normalizeSession(data.session) : currentSession.value
+    toast.success('Caja enviada a validacion')
+    await loadAll()
   } catch (e: any) {
-    toast.error(`Error: ${e?.message ?? String(e)}`)
+    toast.error('Error: ' + (e?.message ?? String(e)))
+  } finally {
+    saving.value = false
+  }
+}
+
+async function approveSession(sessionId: string) {
+  const sb = getSupabase()
+  if (!sb?.rpc) return
+
+  saving.value = true
+  try {
+    const { error } = await sb.rpc('approve_cash_session', {
+      p_session_id: sessionId,
+      p_notes: null,
+    })
+    if (error) throw error
+
+    toast.success('Cierre aprobado')
+    await loadAll()
+    await loadHistory()
+  } catch (e: any) {
+    toast.error('Error: ' + (e?.message ?? String(e)))
   } finally {
     saving.value = false
   }
@@ -532,47 +516,39 @@ async function saveClosure() {
 
 async function loadHistory() {
   historyWarning.value = ''
+  historyLoading.value = true
   const sb = getSupabase()
+
   if (!sb?.from) {
     historyWarning.value = 'Supabase no detectado.'
+    historyLoading.value = false
     return
   }
 
-  historyLoading.value = true
   try {
-    const orgId = auth.profile?.org_id
-    const deptOwnerId = currentDepartmentOwnerId()
-    if (!orgId) {
-      historyWarning.value = 'Tu usuario no tiene organizacion asignada.'
-      return
-    }
-
     let query = sb
-      .from('cash_closures')
+      .from('cash_sessions')
       .select('*')
-      .eq('org_id', orgId)
-      .order('closure_date', { ascending: false })
-      .limit(50)
+      .eq('status', 'closed')
+      .order('closed_at', { ascending: false })
 
-    if (shouldFilterByDepartment() && deptOwnerId) {
-      query = query.eq('department_owner_id', deptOwnerId)
+    if (auth.role === 'leader') {
+      const deptOwnerId = currentDepartmentOwnerId()
+      if (deptOwnerId) query = query.eq('department_owner_id', deptOwnerId)
+    } else if (auth.role !== 'pastor' && auth.role !== 'super_admin') {
+      const deptOwnerId = currentDepartmentOwnerId()
+      if (deptOwnerId) query = query.eq('department_owner_id', deptOwnerId)
+    } else if (auth.profile?.org_id && auth.role !== 'super_admin') {
+      query = query.eq('org_id', auth.profile.org_id)
     }
 
-    const { data, error } = await query
-
+    const { data, error } = await query.limit(100)
     if (error) throw error
-    closures.value = data ?? []
+    historySessions.value = (data ?? []).map(normalizeSession)
   } catch (e: any) {
     historyWarning.value = e?.message ?? String(e)
   } finally {
     historyLoading.value = false
   }
 }
-
-// Auto-load history when switching tabs
-watch(activeTab, (tab) => {
-  if (tab === 'history' && closures.value.length === 0) {
-    loadHistory()
-  }
-})
 </script>
