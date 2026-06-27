@@ -24,33 +24,41 @@ export async function executeCleanup(manifest: ChaosManifest, supabase: MockSupa
   }
   
   if (orgIds.length > 0) {
-    // 1. cash_closures
-    const { error: err1 } = await supabase.from('cash_closures').delete().in('org_id', orgIds)
-    if (err1) throw new Error('Cleanup err1: ' + err1.message)
+    // 1a. order_items by org_id (extremely robust way to clear everything associated with the tenant org)
+    const { error: err1a } = await supabase.from('order_items').delete().in('org_id', orgIds)
+    if (err1a) throw new Error('Cleanup err1a (order_items by org_id): ' + err1a.message)
 
-    // 2. order_items
+    // 1b. order_items by capturedOrderIds (fallback cascade)
     if (capturedOrderIds.length > 0) {
       const { error: err2b } = await supabase.from('order_items').delete().in('order_id', capturedOrderIds)
       if (err2b) throw new Error('Cleanup err2b: ' + err2b.message)
     }
 
-    // 3. orders
+    // 2. orders by org_id
     const { error: err3 } = await supabase.from('orders').delete().in('org_id', orgIds)
     if (err3) throw new Error('Cleanup err3: ' + err3.message)
 
-    // 4. products
+    // 2b. cash_closures by org_id (delete closures referencing sessions and orgs)
+    const { error: errClosures } = await supabase.from('cash_closures').delete().in('org_id', orgIds)
+    if (errClosures) throw new Error('Cleanup errClosures: ' + errClosures.message)
+
+    // 3. cash_sessions by org_id
+    const { error: errSession } = await supabase.from('cash_sessions').delete().in('org_id', orgIds)
+    if (errSession) throw new Error('Cleanup errSession: ' + errSession.message)
+
+    // 4. products by org_id
     const { error: err4 } = await supabase.from('products').delete().in('org_id', orgIds)
     if (err4) throw new Error('Cleanup err4: ' + err4.message)
 
-    // 5. UPDATE organizations
+    // 5. UPDATE organizations owner_id: null
     const { error: err5 } = await supabase.from('organizations').update({ owner_id: null }).in('id', orgIds)
     if (err5) throw new Error('Cleanup err5: ' + err5.message)
 
-    // 6. profiles
+    // 6. profiles by org_id
     const { error: err6 } = await supabase.from('profiles').delete().in('org_id', orgIds)
     if (err6) throw new Error('Cleanup err6: ' + err6.message)
 
-    // 7. organizations
+    // 7. organizations by id
     const { error: err7 } = await supabase.from('organizations').delete().in('id', orgIds)
     if (err7) throw new Error('Cleanup err7: ' + err7.message)
   }
@@ -72,6 +80,7 @@ export async function executeCleanup(manifest: ChaosManifest, supabase: MockSupa
   let prodCount = 0
   let profCount = 0
   let ordCount = 0
+  let sessionCount = 0
   let closureCount = 0
   let orderItemsCount = 0
 
@@ -108,7 +117,15 @@ export async function executeCleanup(manifest: ChaosManifest, supabase: MockSupa
     if (errCheckOrd) throw new Error('Post-cleanup check orders failed: ' + errCheckOrd.message)
     ordCount = cOrd || 0
 
-    // 5. Contar cash_closures
+    // 5. Contar cash_sessions
+    const { count: cSession, error: errCheckSession } = await supabase
+      .from('cash_sessions')
+      .select('*', { count: 'exact', head: true })
+      .in('org_id', orgIds)
+    if (errCheckSession) throw new Error('Post-cleanup check cash_sessions failed: ' + errCheckSession.message)
+    sessionCount = cSession || 0
+
+    // 5b. Contar cash_closures
     const { count: cClosure, error: errCheckClosure } = await supabase
       .from('cash_closures')
       .select('*', { count: 'exact', head: true })
@@ -150,6 +167,7 @@ export async function executeCleanup(manifest: ChaosManifest, supabase: MockSupa
     products: prodCount,
     profiles: profCount,
     orders: ordCount,
+    cash_sessions: sessionCount,
     cash_closures: closureCount,
     order_items: orderItemsCount,
     auth_users: activeAuthUsersCount

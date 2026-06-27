@@ -35,11 +35,12 @@ import { executeCleanup } from './cleanup'
 import {
   completeKdsOrderUI,
   loginUserUI,
+  openCashSessionUI,
   performCashClosingUI,
   performCheckoutUI,
   rejectKdsOrderUI,
 } from './ui'
-import { assertMathematicalConsistency } from './assertions'
+import { assertCashSessionConsistency } from './assertions'
 
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3002/sistema'
 
@@ -316,6 +317,7 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
         saveFinalChaosManifest(manifest)
 
         await actors.leaderA.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' })
+        await openCashSessionUI(actors.leaderA.page, '0')
         await performCheckoutUI(actors.leaderA.page, smokeProduct.name, '200', false)
         await closeDepartmentCash(
           actors.leaderA.page,
@@ -448,6 +450,16 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
 
       // 4. TORMENTA CONCURRENTE
       await test.step('Operación concurrente masiva', async () => {
+        const departmentAProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'books')!.products
+        const departmentBProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'cafe')!.products
+        const departmentCProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'kitchen')!.products
+
+        // 1. Abrir cajas primero con los líderes (estabilización con carga 0)
+        await openCashSessionUI(actors.leaderA.page, '0')
+        await openCashSessionUI(actors.leaderB.page, '0')
+        await openCashSessionUI(actors.leaderC.page, '0')
+
+        // 2. Iniciar sesión de cajeros de forma concurrente
         await Promise.all([
           loginUserUI(actors.sellerB1.page, users.sellerB1.email, users.sellerB1.password, BASE_URL),
           loginUserUI(actors.sellerB2.page, users.sellerB2.email, users.sellerB2.password, BASE_URL),
@@ -455,10 +467,6 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
           loginUserUI(actors.sellerC.page, users.sellerC.email, users.sellerC.password, BASE_URL),
           loginUserUI(actors.cookC.page, users.cookC.email, users.cookC.password, BASE_URL),
         ])
-
-        const departmentAProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'books')!.products
-        const departmentBProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'cafe')!.products
-        const departmentCProducts = DEPARTMENT_PLANS.find(dept => dept.id === 'kitchen')!.products
 
         // Preparar pantallas de venta de forma secuencial evita falsos negativos
         // por hidratacion del dev server; la concurrencia real ocurre en los cobros.
@@ -468,6 +476,7 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
         await openPosAndWaitForProducts(actors.sellerB3.page, departmentBProducts)
         await openPosAndWaitForProducts(actors.sellerC.page, departmentCProducts)
 
+        // Tormenta concurrente con volumen completo de validacion final.
         await Promise.all([
           performConcurrentSales(actors.leaderA.page, departmentAProducts, 15),
           performConcurrentSales(actors.sellerB1.page, departmentBProducts, 10),
@@ -553,14 +562,15 @@ async function cleanupJourney(
 ): Promise<void> {
   let cleanupError: unknown
 
+  // First close all active browser sessions to prevent background traffic/network requests
+  await closeActorSessions(actors)
+
   try {
     saveManifestSafe(manifest, `tests/evidence/operational-chaos/manifest_${manifest.runId}.json`)
     await executeCleanup(manifest, supabaseAdmin)
   } catch (err) {
     cleanupError = err
   }
-
-  await closeActorSessions(actors)
 
   if (cleanupError) throw cleanupError
 }
@@ -605,8 +615,14 @@ async function toggleAutoAcceptUI(
   }
 
   const responsePromise = page.waitForResponse(response => {
-    return response.url().includes('/rest/v1/profiles')
-      && response.request().method() === 'PATCH'
+    const url = response.url()
+    const method = response.request().method()
+    const matchesSafeRpc = url.includes('/rest/v1/rpc/set_staff_auto_accept_safely')
+      && method === 'POST'
+    const matchesLegacyPatch = url.includes('/rest/v1/profiles')
+      && method === 'PATCH'
+
+    return (matchesSafeRpc || matchesLegacyPatch)
       && response.status() >= 200
       && response.status() < 300
   }, { timeout: 15000 })
@@ -711,7 +727,17 @@ async function openPosAndWaitForProducts(page: Page, catalog: ProductPlan[]): Pr
   const firstProduct = catalog[0]
 
   for (let attempt = 1; attempt <= 3; attempt++) {
-    await page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.goto(
+      `${BASE_URL}/page/POS/pointOfSales?chaosRetry=${attempt}-${Date.now()}`,
+      { waitUntil: 'domcontentloaded', timeout: 60000 },
+    )
+    await page.locator('#__nuxt, #app, body').first().waitFor({ state: 'attached', timeout: 10000 }).catch(() => null)
+
+    const bodyText = await page.locator('body').textContent({ timeout: 5000 }).catch(() => '')
+    if ((bodyText?.trim().length ?? 0) <= 500) {
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 })
+      await page.locator('#__nuxt, #app, body').first().waitFor({ state: 'attached', timeout: 10000 }).catch(() => null)
+    }
 
     const visible = await page
       .locator('.product-card, .v-card')
@@ -778,7 +804,7 @@ async function closeDepartmentCash(
 ): Promise<void> {
   await page.goto(`${BASE_URL}/page/POS/cashClosing`, { waitUntil: 'domcontentloaded' })
   await performCashClosingUI(page, dateStr, countedAmount)
-  await assertMathematicalConsistency(supabaseAdmin, orgId, dateStr, departmentOwnerId)
+  await assertCashSessionConsistency(supabaseAdmin, orgId, departmentOwnerId)
 }
 
 function expectedCashForSales(catalog: ProductPlan[], count: number): string {

@@ -219,14 +219,11 @@ test.describe('Final User Journey - Real customer flow', () => {
           emails: [pastor.email, leader.email, leaderB.email, cashier.email, cashierB.email, kitchen.email],
           productNames: [onboardingProductName, productName, productBName],
         })
-        saveJourneyManifest(manifest)
-        await executeCleanup(manifest, supabaseAdmin as any)
       } catch (err) {
         cleanupError = err
       }
 
-      saveJourneyManifest(manifest)
-
+      // Close browser contexts first to halt background updates before deleting records
       await Promise.allSettled([
         pastorCtx.close(),
         leaderCtx.close(),
@@ -235,6 +232,15 @@ test.describe('Final User Journey - Real customer flow', () => {
         cashierBCtx.close(),
         kitchenCtx.close(),
       ])
+
+      try {
+        saveJourneyManifest(manifest)
+        await executeCleanup(manifest, supabaseAdmin as any)
+      } catch (err) {
+        if (!cleanupError) cleanupError = err
+      }
+
+      saveJourneyManifest(manifest)
 
       if (cleanupError) throw cleanupError
     }

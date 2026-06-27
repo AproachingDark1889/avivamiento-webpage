@@ -41,47 +41,72 @@ export async function assertMathematicalConsistency(
     expect(calculatedTotal, `order_items total mismatch for order ${order.id}`).toBe(Number(order.total))
   }
   
-  // 2. Reconcile cash closures with orders
-  let closuresQuery = sb
-    .from('cash_closures')
-    .select('id, sales_total, department_owner_id')
+  await assertCashSessionConsistency(sb, orgId, departmentOwnerId)
+}
+
+export async function assertCashSessionConsistency(
+  sb: any,
+  orgId: string,
+  departmentOwnerId?: string
+): Promise<void> {
+  let sessionsQuery = sb
+    .from('cash_sessions')
+    .select('id, sales_total, total_cash_sales, total_card_sales, total_transfer_sales, orders_count, status, department_owner_id')
     .eq('org_id', orgId)
-    .eq('closure_date', dateStr)
+    .in('status', ['pending_validation', 'closed'])
 
   if (departmentOwnerId) {
-    closuresQuery = closuresQuery.eq('department_owner_id', departmentOwnerId)
+    sessionsQuery = sessionsQuery.eq('department_owner_id', departmentOwnerId)
   }
 
-  const { data: closures, error: closuresErr } = await closuresQuery
-    
-  expect(closuresErr).toBeNull()
-  
-  const closureList = closures || []
+  const { data: sessions, error: sessionsErr } = await sessionsQuery
+  expect(sessionsErr).toBeNull()
 
+  const sessionList = sessions || []
   if (departmentOwnerId) {
     expect(
-      closureList,
-      `Expected exactly one cash closure for department ${departmentOwnerId} on ${dateStr}`
-    ).toHaveLength(1)
+      sessionList.length,
+      `Expected at least one reconciled cash session for department ${departmentOwnerId}`
+    ).toBeGreaterThan(0)
   }
 
-  for (const closure of closureList) {
-    const closureSalesTotal = Number(closure.sales_total)
-    const closureDepartmentOwnerId = closure.department_owner_id
-    
-    // A rejected/cancelled kitchen order can still be financially paid.
-    // Cash closure must reconcile against financial reality per department.
-    const paidOrders = (orders || []).filter(o => {
-      if (closureDepartmentOwnerId && o.department_owner_id !== closureDepartmentOwnerId) return false
-      return o.financial_status === 'paid'
-    })
-    const ordersSalesSum = paidOrders.reduce((sum, o) => sum + Number(o.total), 0)
-    
-    expect(
-      closureSalesTotal,
-      `cash_closure ${closure.id} total mismatch for department ${closureDepartmentOwnerId || 'unknown'}`
-    ).toBe(ordersSalesSum)
+  for (const session of sessionList) {
+    const { data: orders, error: ordersErr } = await sb
+      .from('orders')
+      .select('id, total, financial_status, payment_method')
+      .eq('org_id', orgId)
+      .eq('cash_session_id', session.id)
+
+    expect(ordersErr).toBeNull()
+
+    const paidOrders = (orders || []).filter((order: any) => order.financial_status === 'paid')
+    const salesTotal = paidOrders.reduce((sum: number, order: any) => sum + Number(order.total), 0)
+    const cashSales = paidOrders
+      .filter((order: any) => order.payment_method === 'cash' || !order.payment_method)
+      .reduce((sum: number, order: any) => sum + Number(order.total), 0)
+    const cardSales = paidOrders
+      .filter((order: any) => order.payment_method === 'card')
+      .reduce((sum: number, order: any) => sum + Number(order.total), 0)
+    const transferSales = paidOrders
+      .filter((order: any) => order.payment_method === 'transfer')
+      .reduce((sum: number, order: any) => sum + Number(order.total), 0)
+
+    expect(Number(session.sales_total), `cash_session ${session.id} sales_total mismatch`).toBe(salesTotal)
+    expect(Number(session.total_cash_sales), `cash_session ${session.id} cash total mismatch`).toBe(cashSales)
+    expect(Number(session.total_card_sales), `cash_session ${session.id} card total mismatch`).toBe(cardSales)
+    expect(Number(session.total_transfer_sales), `cash_session ${session.id} transfer total mismatch`).toBe(transferSales)
+    expect(Number(session.orders_count), `cash_session ${session.id} order count mismatch`).toBe(paidOrders.length)
   }
+
+  const { data: orphanOrders, error: orphanErr } = await sb
+    .from('orders')
+    .select('id')
+    .eq('org_id', orgId)
+    .is('cash_session_id', null)
+    .eq('financial_status', 'paid')
+
+  expect(orphanErr).toBeNull()
+  expect(orphanOrders || [], 'Paid orders must be linked to a cash session').toHaveLength(0)
 }
 
 export async function assertCrossTenantIsolation(
@@ -116,13 +141,26 @@ export async function assertCrossTenantIsolation(
   })
   expect(betaAuthErr).toBeNull()
 
+  const { error: openAlphaErr } = await sbAlpha.rpc('open_cash_session', {
+    p_mode: 'shared',
+    p_opening_cash: 0
+  })
+  expect(openAlphaErr).toBeNull()
+
+  const { error: openBetaErr } = await sbBeta.rpc('open_cash_session', {
+    p_mode: 'shared',
+    p_opening_cash: 0
+  })
+  expect(openBetaErr).toBeNull()
+
   // 3. Process checkout for Alpha to create a real order in Org A
   const { data: orderA, error: errA } = await sbAlpha.rpc('process_checkout', {
     p_items: [{ product_id: productIdAlpha, quantity: 1 }],
     p_payment_method: 'cash',
     p_paid_with: 200,
     p_change: 0,
-    p_auto_accept: false
+    p_auto_accept: false,
+    p_mode: 'shared'
   })
   expect(errA).toBeNull()
 
@@ -132,7 +170,8 @@ export async function assertCrossTenantIsolation(
     p_payment_method: 'cash',
     p_paid_with: 200,
     p_change: 0,
-    p_auto_accept: false
+    p_auto_accept: false,
+    p_mode: 'shared'
   })
   expect(errB).toBeNull()
 
