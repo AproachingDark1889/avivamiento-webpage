@@ -841,9 +841,10 @@ async function isVisibleSoon(locator: Locator): Promise<boolean> {
 
 function isCashClosingRoute(url: string): boolean {
   try {
-    return new URL(url).pathname.endsWith('/page/POS/cashClosing')
+    const pathname = new URL(url).pathname.replace(/\/+$/, '')
+    return pathname.endsWith('/page/POS/cashClosing')
   } catch {
-    return url.includes('/page/POS/cashClosing')
+    return url.replace(/\/+$/, '').includes('/page/POS/cashClosing')
   }
 }
 
