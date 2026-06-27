@@ -719,27 +719,12 @@ export async function rejectKdsOrderUI(page: Page, productName: string): Promise
 export async function performCashClosingUI(page: Page, dateStr: string, countedAmount: string): Promise<void> {
   void dateStr
 
-  await page
-    .getByText(/Corte de Caja|Sesion de Caja|Sesión de Caja/i)
-    .first()
-    .waitFor({ state: 'visible', timeout: 60000 })
-
-  const cashCountedInput = page.locator('input[type="number"], input[inputmode="decimal"]').first()
-  const unavailableState = page
-    .locator('.v-alert, [role="alert"]')
-    .filter({ hasText: /No hay caja abierta|Usuario no pertenece|No autenticado|Supabase no detectado/i })
-    .first()
-
-  const state = await Promise.race([
-    cashCountedInput.waitFor({ state: 'visible', timeout: 60000 }).then(() => 'input' as const).catch(() => null),
-    unavailableState.waitFor({ state: 'visible', timeout: 60000 }).then(() => 'unavailable' as const).catch(() => null),
-  ])
-
-  if (state === 'unavailable') {
-    const message = await unavailableState.textContent().catch(() => '')
-    throw new Error(`Cash closing session unavailable: ${message?.trim() || 'unknown state'}`)
+  const closingState = await waitForCashClosingState(page)
+  if (closingState.kind !== 'ready') {
+    throw new Error(formatCashClosingError(closingState))
   }
 
+  const cashCountedInput = page.locator('input[type="number"], input[inputmode="decimal"]').first()
   await expect(cashCountedInput).toBeVisible({ timeout: 1000 })
   await cashCountedInput.fill(countedAmount)
   await page.waitForTimeout(500)
@@ -755,4 +740,130 @@ export async function performCashClosingUI(page: Page, dateStr: string, countedA
     await approveBtn.click()
     await page.waitForTimeout(2000)
   }
+}
+
+type CashClosingStateKind =
+  | 'ready'
+  | 'dynamic-import-error'
+  | 'runtime-error'
+  | 'no-open-session'
+  | 'route-not-ready'
+  | 'view-not-mounted'
+  | 'expected-controls-missing'
+
+interface CashClosingState {
+  kind: CashClosingStateKind
+  url: string
+  snippet: string
+  hasHeader: boolean
+  hasInput: boolean
+  hasPreCloseButton: boolean
+  hasNoOpenSession: boolean
+  hasRuntimeError: boolean
+  hasDynamicImportError: boolean
+}
+
+async function waitForCashClosingState(page: Page, timeoutMs = 30000): Promise<CashClosingState> {
+  const deadline = Date.now() + timeoutMs
+  let lastState = await inspectCashClosingState(page)
+
+  while (Date.now() < deadline) {
+    lastState = await inspectCashClosingState(page)
+
+    if (lastState.hasDynamicImportError) {
+      return { ...lastState, kind: 'dynamic-import-error' }
+    }
+    if (lastState.hasRuntimeError) {
+      return { ...lastState, kind: 'runtime-error' }
+    }
+    if (!isCashClosingRoute(lastState.url)) {
+      await page.waitForTimeout(500)
+      continue
+    }
+    if (lastState.hasNoOpenSession) {
+      return { ...lastState, kind: 'no-open-session' }
+    }
+    if (lastState.hasHeader && lastState.hasInput && lastState.hasPreCloseButton) {
+      return { ...lastState, kind: 'ready' }
+    }
+
+    await page.waitForTimeout(500)
+  }
+
+  if (!isCashClosingRoute(lastState.url)) {
+    return { ...lastState, kind: 'route-not-ready' }
+  }
+  if (!lastState.hasHeader) {
+    return { ...lastState, kind: 'view-not-mounted' }
+  }
+  return { ...lastState, kind: 'expected-controls-missing' }
+}
+
+async function inspectCashClosingState(page: Page): Promise<CashClosingState> {
+  const url = page.url()
+  const bodyText = await page.locator('body').innerText({ timeout: 1000 }).catch(() => '')
+  const snippet = bodyText.replace(/\s+/g, ' ').trim().slice(0, 500)
+
+  const header = page.getByText(/Corte de Caja|Sesion de Caja|Sesión de Caja/i).first()
+  const cashCountedInput = page.locator('input[type="number"], input[inputmode="decimal"]').first()
+  const preCloseBtn = page.getByRole('button', { name: /Pre-cerrar Caja/i }).first()
+  const noOpenSession = page
+    .locator('.v-alert, [role="alert"], body')
+    .filter({ hasText: /No hay caja abierta para tu contexto actual/i })
+    .first()
+
+  const hasHeader = await isVisibleSoon(header)
+  const hasInput = await isVisibleSoon(cashCountedInput)
+  const hasPreCloseButton = await isVisibleSoon(preCloseBtn)
+  const hasNoOpenSession = await isVisibleSoon(noOpenSession)
+  const hasDynamicImportError = /Failed to fetch dynamically imported module/i.test(bodyText)
+  const hasRuntimeError = /Internal Server Error/i.test(bodyText) || /^500(?:\s|$)/.test(bodyText.trim())
+
+  return {
+    kind: 'view-not-mounted',
+    url,
+    snippet,
+    hasHeader,
+    hasInput,
+    hasPreCloseButton,
+    hasNoOpenSession,
+    hasRuntimeError,
+    hasDynamicImportError,
+  }
+}
+
+async function isVisibleSoon(locator: Locator): Promise<boolean> {
+  return await locator
+    .waitFor({ state: 'visible', timeout: 500 })
+    .then(() => true)
+    .catch(() => false)
+}
+
+function isCashClosingRoute(url: string): boolean {
+  try {
+    return new URL(url).pathname.endsWith('/page/POS/cashClosing')
+  } catch {
+    return url.includes('/page/POS/cashClosing')
+  }
+}
+
+function formatCashClosingError(state: CashClosingState): string {
+  const base = `url=${state.url}; header=${state.hasHeader}; input=${state.hasInput}; preClose=${state.hasPreCloseButton}; snippet="${state.snippet}"`
+
+  if (state.kind === 'dynamic-import-error') {
+    return `CASH_CLOSING_DYNAMIC_IMPORT_ERROR: ${base}`
+  }
+  if (state.kind === 'runtime-error') {
+    return `CASH_CLOSING_PREVIEW_RUNTIME_ERROR: ${base}`
+  }
+  if (state.kind === 'no-open-session') {
+    return `CASH_CLOSING_NO_OPEN_SESSION: ${base}`
+  }
+  if (state.kind === 'route-not-ready') {
+    return `CASH_CLOSING_ROUTE_NOT_READY: ${base}`
+  }
+  if (state.kind === 'expected-controls-missing') {
+    return `CASH_CLOSING_EXPECTED_CONTROLS_MISSING: ${base}`
+  }
+  return `CASH_CLOSING_VIEW_NOT_MOUNTED: ${base}`
 }
