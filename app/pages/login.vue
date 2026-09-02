@@ -202,7 +202,7 @@ const authError = computed(() => auth.error)
 
 const registrationNotice = computed(() => {
   return route.query.registered === '1'
-    ? 'Cuenta creada correctamente. Inicia sesiÃ³n para terminar la configuraciÃ³n.'
+    ? 'Cuenta creada correctamente. Inicia sesión para terminar la configuración.'
     : ''
 })
 
@@ -227,15 +227,20 @@ onMounted(async () => {
 })
 
 async function goAfterLogin() {
-  if (redirectPath.value) {
+  if (redirectPath.value && redirectPath.value !== '/login') {
     return navigateTo(redirectPath.value)
   }
   if (auth.profile?.role === 'pastor' && auth.profile?.onboarding_completed === false) {
     return navigateTo('/onboarding')
   }
+  
+  // Aterrizaje jerárquico inteligente por rol (DAN - El Evolucionado)
+  if (auth.role === 'super_admin') return navigateTo('/page/POS/users')
+  if (auth.role === 'pastor') return navigateTo('/page/POS/reports')
+  if (auth.role === 'leader') return navigateTo('/page/POS/reports')
+  if (auth.role === 'kitchen') return navigateTo('/page/POS/kds')
   if (auth.canAccessPos) return navigateTo('/page/POS/pointOfSales')
-  if (auth.canAccessKds) return navigateTo('/page/POS/kds')
-  if (auth.canViewReports) return navigateTo('/page/POS/reports')
+  
   return navigateTo('/forbidden?reason=role')
 }
 

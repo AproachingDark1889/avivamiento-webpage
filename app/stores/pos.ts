@@ -4,6 +4,27 @@ import type { Product, OrderItem, CashSession, CashSessionMode } from '../types'
 
 const STORAGE_KEY = 'genesis_sales_core_cart_v1'
 
+const checkoutMessages: Record<string, string> = {
+  ACV_CHECKOUT_CASH_SESSION_NOT_OPEN: 'La caja ya no está disponible. Actualiza la sesión antes de cobrar.',
+  ACV_CHECKOUT_CASH_INSUFFICIENT: 'El efectivo recibido no cubre el total de la venta.',
+  ACV_CHECKOUT_PRODUCT_UNAVAILABLE: 'Uno o más productos ya no están disponibles para esta caja.',
+  ACV_CHECKOUT_FORBIDDEN: 'Tu perfil no está autorizado para procesar este cobro.',
+  ACV_CHECKOUT_CART_INVALID: 'El carrito ya no es válido. Revísalo e inténtalo de nuevo.',
+  ACV_CHECKOUT_ITEM_INVALID: 'Uno de los artículos del carrito no es válido.',
+  ACV_CHECKOUT_INVALID_PAYMENT_METHOD: 'El método de pago seleccionado no es válido.',
+  ACV_CHECKOUT_INVALID_PAYMENT_AMOUNT: 'El monto ingresado no es válido.',
+  ACV_CHECKOUT_INDEPENDENT_NOT_ENABLED: 'Caja independiente no habilitada para este usuario.',
+}
+
+function normalizeCheckoutError(error: unknown): Error {
+  const raw = error as { message?: unknown }
+  const code = typeof raw?.message === 'string' ? raw.message : ''
+  const message = checkoutMessages[code]
+    ?? (typeof raw?.message === 'string' && !raw.message.startsWith('ACV_') ? raw.message : 'No fue posible registrar la venta. Actualiza la pantalla e inténtalo de nuevo.')
+
+  return Object.assign(new Error(message), { code: code || 'ACV_CHECKOUT_UNEXPECTED' })
+}
+
 export const usePosStore = defineStore('pos', {
   state: () => ({
     cart: [] as OrderItem[],
@@ -221,8 +242,9 @@ export const usePosStore = defineStore('pos', {
         await this.loadCurrentCashSession(this.selectedCashMode).catch(() => null)
         return data
       } catch (e) {
-        console.error('Error en checkout:', e)
-        throw e
+        const normalized = normalizeCheckoutError(e)
+        console.warn('Checkout rechazado:', (normalized as any).code || normalized.message)
+        throw normalized
       } finally {
         this.loading = false
         this.showPayment = false

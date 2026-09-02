@@ -33,7 +33,9 @@ export default defineNuxtConfig({
   },
 
   app: {
-    baseURL: '/sistema/',
+    // The deployed Worker serves the app from the domain root.
+    // `/sistema` is a page route, not the asset/app base path.
+    baseURL: '/',
     head: {
       title: 'AvivaCheck POS',
       htmlAttrs: {

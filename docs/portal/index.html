@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AvivaCheck POS — Manual Operativo y Guía en Video para tu Iglesia</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Alpine.js Core -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+              950: '#082f49'
+            },
+            accent: {
+              500: '#10b981',
+              600: '#059669',
+              amber: '#f59e0b',
+              purple: '#8b5cf6',
+              rose: '#f43f5e'
+            },
+            darkbg: '#070b12',
+            darkcard: '#0f172a',
+            darkborder: '#1e293b'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    code, pre, .font-mono { font-family: 'Fira Code', monospace; }
+    
+    .glassmorphism {
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #070b12; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #0ea5e9; }
+
+    /* Custom Video Scrubber Slider */
+    input[type=range].scrubber-slider {
+      -webkit-appearance: none;
+      background: transparent;
+      width: 100%;
+      height: 24px;
+      cursor: pointer;
+    }
+    input[type=range].scrubber-slider:focus {
+      outline: none;
+    }
+    input[type=range].scrubber-slider::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 9999px;
+      transition: background 0.2s;
+    }
+    input[type=range].scrubber-slider:hover::-webkit-slider-runnable-track {
+      background: #334155;
+    }
+    input[type=range].scrubber-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 9999px;
+      background: #0ea5e9;
+      margin-top: -5px;
+      box-shadow: 0 0 10px rgba(14, 165, 233, 0.8);
+      border: 2px solid #ffffff;
+      cursor: grab;
+      transition: transform 0.15s, background 0.15s;
+    }
+    input[type=range].scrubber-slider:active::-webkit-slider-thumb {
+      cursor: grabbing;
+      transform: scale(1.25);
+      background: #38bdf8;
+    }
+    input[type=range].scrubber-slider::-moz-range-track {
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    input[type=range].scrubber-slider::-moz-range-thumb {
+      height: 16px;
+      width: 16px;
+      border-radius: 9999px;
+      background: #0ea5e9;
+      box-shadow: 0 0 10px rgba(14, 165, 233, 0.8);
+      border: 2px solid #ffffff;
+      cursor: grab;
+    }
+  </style>
+</head>
+<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white"
+      x-data="docsPortal()"
+      @keydown.window="handleGlobalKeydown($event)">
+
+  <!-- HEADER / NAVBAR (ULTRA LIMPIO) -->
+  <header class="sticky top-0 z-40 w-full glassmorphism border-b border-darkborder shadow-2xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+      
+      <!-- LOGO & TITULO -->
+      <div class="flex items-center space-x-3 shrink-0">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-accent-500 flex items-center justify-center shadow-lg shadow-brand-500/30 ring-1 ring-white/20">
+          <i data-lucide="church" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-extrabold text-lg tracking-tight text-white">AvivaCheck POS</span>
+            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-accent-500/20 text-accent-400 border border-accent-500/40 uppercase tracking-wide">Manual en Video</span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block">Guía interactiva paso a paso para pastores, líderes, cajeros y cocina</p>
+        </div>
+      </div>
+
+      <!-- SEARCH BAR -->
+      <div class="relative flex-1 max-w-md mx-2">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+          <i data-lucide="search" class="w-4 h-4 text-brand-400"></i>
+        </div>
+        <input type="text" 
+               x-model.debounce.150ms="searchQuery"
+               placeholder="¿Qué necesitas hacer hoy? (ej. cobrar, abrir caja, corte...)" 
+               class="w-full pl-9 pr-8 py-1.5 bg-slate-900/90 text-xs sm:text-sm text-slate-200 placeholder-slate-400 rounded-xl border border-darkborder focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 transition-all">
+        <button x-show="searchQuery" 
+                @click="searchQuery = ''"
+                class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- ACCIONES DIRECTAS -->
+      <div class="flex items-center space-x-2.5 shrink-0">
+        <button @click="toggleGlobalPlayback()" 
+                class="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-darkborder transition flex items-center space-x-1.5 shadow-sm">
+          <i :data-lucide="allPlaying ? 'pause' : 'play'" class="w-3.5 h-3.5 text-accent-500"></i>
+          <span x-text="allPlaying ? 'Pausar Todos' : 'Reproducir Todos'" class="hidden md:inline"></span>
+        </button>
+        <a href="http://localhost:3002" target="_blank" class="px-3.5 py-1.5 rounded-xl bg-accent-600 hover:bg-accent-500 text-xs font-semibold text-white shadow-lg shadow-accent-600/30 transition flex items-center space-x-1.5">
+          <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+          <span>Abrir POS</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full flex flex-col md:flex-row gap-6">
+
+    <!-- SIDEBAR DE ROLES (DESKTOP) -->
+    <aside class="hidden md:block w-64 shrink-0">
+      <div class="sticky top-24 space-y-4">
+        
+        <!-- NAVEGACIÓN DE ROLES -->
+        <div class="bg-darkcard border border-darkborder rounded-2xl p-4 shadow-xl">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center space-x-1.5">
+            <i data-lucide="users-round" class="w-3.5 h-3.5 text-brand-400"></i>
+            <span>¿Cuál es tu función?</span>
+          </h3>
+          <nav class="space-y-1.5">
+            <template x-for="role in roles" :key="role.id">
+              <button @click="activeRole = role.id"
+                      :class="activeRole === role.id ? 'bg-gradient-to-r from-brand-600 to-brand-700 text-white font-semibold shadow-lg shadow-brand-600/30 ring-1 ring-white/20' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'"
+                      class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm transition text-left group">
+                <div class="flex items-center space-x-2.5">
+                  <span :class="role.iconColor" class="p-1 rounded-lg bg-slate-900/80 group-hover:bg-slate-900">
+                    <i :data-lucide="role.icon" class="w-4 h-4"></i>
+                  </span>
+                  <span x-text="role.name"></span>
+                </div>
+                <span class="text-[11px] px-1.5 py-0.5 rounded-md bg-slate-900/90 text-slate-400 font-mono group-hover:text-white" x-text="getStepCountForRole(role.id)"></span>
+              </button>
+            </template>
+          </nav>
+        </div>
+
+        <!-- TARJETA DE TRANQUILIDAD Y APOYO -->
+        <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-darkborder rounded-2xl p-4 shadow-lg text-xs space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2 text-accent-500 font-bold">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+              <span>Guías Clicables 1-2-3</span>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-accent-500/20 text-accent-400 font-bold">Interactiva</span>
+          </div>
+          <p class="text-slate-400 leading-relaxed text-[11px]">
+            Puedes <strong>hacer clic en cualquier paso (1, 2 o 3)</strong> para que el video salte instantáneamente a ese momento exacto.
+          </p>
+          <div class="pt-2 border-t border-slate-800/80 flex justify-between text-[11px] text-slate-400">
+            <span>Velocidad de Video</span>
+            <span class="text-brand-400 font-bold">Natural (35s)</span>
+          </div>
+        </div>
+
+        <!-- ACCESO RÁPIDO A PREGUNTAS FRECUENTES -->
+        <div class="bg-slate-900/60 border border-darkborder rounded-2xl p-3 text-[11px] space-y-2">
+          <div class="font-semibold text-slate-300 flex items-center space-x-1.5">
+            <i data-lucide="help-circle" class="w-3.5 h-3.5 text-accent-amber"></i>
+            <span>Dudas Frecuentes:</span>
+          </div>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            Revisa las respuestas claras a qué pasa si se va la luz, cómo entregar el dinero y cómo supervisar desde el celular al final de la página.
+          </p>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- CONTENT AREA -->
+    <main class="flex-1 min-w-0 space-y-6 pb-20 md:pb-8">
+
+      <!-- ROLE SELECTOR (MOBILE HORIZONTAL SCROLL) -->
+      <div class="md:hidden overflow-x-auto custom-scrollbar flex space-x-2 pb-1">
+        <template x-for="role in roles" :key="role.id">
+          <button @click="activeRole = role.id"
+                  :class="activeRole === role.id ? 'bg-brand-600 text-white font-semibold shadow-md shadow-brand-600/30' : 'bg-slate-900 text-slate-300 border border-darkborder'"
+                  class="shrink-0 px-3.5 py-2 rounded-xl text-xs flex items-center space-x-2 transition">
+            <i :data-lucide="role.icon" class="w-3.5 h-3.5"></i>
+            <span x-text="role.name"></span>
+          </button>
+        </template>
+      </div>
+
+      <!-- HERO BANNER -->
+      <section class="bg-gradient-to-r from-slate-900 via-slate-900 to-brand-950/50 border border-darkborder rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-8 -bottom-8 w-60 h-60 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-accent-500/10 border border-accent-500/20 text-accent-400 text-xs font-semibold mb-2">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+              <span>Guía visual interactiva paso a paso</span>
+            </div>
+            <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight" x-text="getCurrentRole().title"></h1>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl leading-relaxed" x-text="getCurrentRole().description"></p>
+          </div>
+          <div class="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-800 shrink-0">
+            <span class="text-xs text-slate-400">Nivel de Acceso:</span>
+            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 text-xs font-semibold border border-darkborder mt-1" x-text="getCurrentRole().hierarchy"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROCEDURES & STEPS LIST (LA TRÍADA DORADA) -->
+      <section class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center space-x-2">
+            <i data-lucide="layers" class="w-4 h-4 text-brand-400"></i>
+            <span>Procedimientos en Video (<span x-text="filteredSteps.length"></span>)</span>
+          </h2>
+          <span class="text-xs text-slate-400" x-show="searchQuery">Buscando: "<span class="text-brand-400 font-medium" x-text="searchQuery"></span>"</span>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6">
+          <template x-for="(step, index) in filteredSteps" :key="step.id">
+            <article class="bg-darkcard border border-darkborder hover:border-slate-700/80 rounded-2xl overflow-hidden shadow-2xl transition-all duration-200 flex flex-col lg:flex-row"
+                     x-data="screencastPlayer(step)">
+              
+              <!-- MEDIA VIEWER: REPRODUCTOR INTERACTIVO Y NARRACIÓN -->
+              <div class="lg:w-7/12 bg-slate-950/95 p-3 sm:p-4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-darkborder relative group">
+                
+                <!-- TOP HEADER DEL REPRODUCTOR -->
+                <div class="w-full flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80 text-xs">
+                  <div class="flex items-center space-x-2">
+                    <span class="px-2 py-0.5 rounded-md bg-accent-600/20 text-accent-300 border border-accent-500/30 text-[11px] font-bold flex items-center space-x-1">
+                      <i data-lucide="play-circle" class="w-3.5 h-3.5 text-accent-400"></i>
+                      <span>Demostración en Video (35s)</span>
+                    </span>
+                    <span class="text-[11px] font-semibold text-slate-400" x-text="'Paso ' + step.stepNumber"></span>
+                  </div>
+
+                  <div class="flex items-center space-x-1.5">
+                    <!-- BOTÓN MAXIMIZAR PANTALLA COMPLETA -->
+                    <button @click="openTheater(step, currentFrame, playbackRate)" 
+                            title="Pantalla Completa"
+                            class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 transition flex items-center space-x-1 text-xs">
+                      <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-brand-400"></i>
+                      <span class="hidden sm:inline">Pantalla Completa</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- CANVAS / PANTALLA PRINCIPAL -->
+                <div class="relative w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-900 aspect-video flex items-center justify-center shadow-2xl select-none group/screen">
+                  
+                  <div class="w-full h-full relative flex items-center justify-center bg-black">
+                    <!-- CANVAS ELEMENT -->
+                    <canvas x-ref="canvas" 
+                            @click="togglePlay()"
+                            @dblclick="openTheater(step, currentFrame, playbackRate)"
+                            class="w-full h-full object-contain cursor-pointer transition-opacity duration-150"></canvas>
+
+                    <!-- BOTÓN PLAY/PAUSE OVERLAY EN CENTRO -->
+                    <div x-show="!isPlaying" 
+                         x-transition.opacity
+                         @click="togglePlay()"
+                         class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] cursor-pointer z-10">
+                      <div class="w-14 h-14 rounded-2xl bg-accent-600 hover:bg-accent-500 text-white flex items-center justify-center shadow-2xl ring-4 ring-white/20 transition-transform transform hover:scale-110">
+                        <i data-lucide="play" class="w-7 h-7 fill-current ml-1"></i>
+                      </div>
+                    </div>
+
+                    <!-- ESTADO REPRODUCCIÓN -->
+                    <div class="absolute top-2.5 right-2.5 z-10 pointer-events-none opacity-80 group-hover/screen:opacity-100 transition">
+                      <span class="px-2 py-0.5 rounded bg-black/75 backdrop-blur-md text-[10px] font-semibold text-slate-300 border border-white/10 flex items-center space-x-1.5">
+                        <span class="w-2 h-2 rounded-full" :class="isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'"></span>
+                        <span x-text="isPlaying ? 'REPRODUCIENDO' : 'PAUSADO'"></span>
+                      </span>
+                    </div>
+
+                    <!-- BADGE TIEMPO Y FOTOGRAMA EN VIVO -->
+                    <div class="absolute bottom-2.5 left-2.5 z-10 pointer-events-none">
+                      <span class="px-2 py-0.5 rounded bg-slate-950/90 backdrop-blur-md text-[10px] font-mono text-brand-300 border border-brand-500/30">
+                        <span x-text="currentTimeFormatted + ' • ' + (currentFrame + 1) + '/' + totalFrames"></span>
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- FRANJA DE NARRACIÓN EN VIVO (QUÉ ESTÁ OCURRIENDO AHORA) -->
+                <div class="w-full mt-2.5 p-2.5 rounded-xl bg-brand-950/40 border border-brand-500/30 text-xs text-brand-200 flex items-start space-x-2 shadow-sm">
+                  <i data-lucide="info" class="w-4 h-4 text-brand-400 shrink-0 mt-0.5"></i>
+                  <div class="flex-1">
+                    <span class="font-bold text-white text-[11px] uppercase tracking-wider block mb-0.5">Momento actual:</span>
+                    <p class="text-xs text-slate-200 font-medium leading-relaxed" x-text="currentNarration"></p>
+                  </div>
+                </div>
+
+                <!-- CONTROLES INTERACTIVOS DEL REPRODUCTOR -->
+                <div class="w-full mt-2.5 space-y-2 bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 shadow-inner">
+                  
+                  <!-- TIMELINE SCRUBBER SLIDER -->
+                  <div class="w-full flex items-center space-x-2">
+                    <span class="text-[11px] font-mono text-slate-300 shrink-0 font-semibold" x-text="currentTimeFormatted"></span>
+                    
+                    <div class="relative flex-1 flex items-center">
+                      <input type="range" 
+                             class="scrubber-slider" 
+                             min="0" 
+                             :max="Math.max(0, totalFrames - 1)" 
+                             :value="currentFrame" 
+                             @input="onScrub($event)"
+                             @mousedown="pause()"
+                             @touchstart="pause()"
+                             :aria-label="'Timeline scrubber ' + step.title">
+                    </div>
+
+                    <span class="text-[11px] font-mono text-slate-400 shrink-0" x-text="totalDurationFormatted"></span>
+                  </div>
+
+                  <!-- BARRA INFERIOR DE BOTONES & VELOCIDAD -->
+                  <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+                    
+                    <!-- BOTONES DE PLAYBACK -->
+                    <div class="flex items-center space-x-1">
+                      <!-- REINICIAR -->
+                      <button @click="restart()" 
+                              title="Volver a empezar (R)"
+                              class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                      </button>
+                      
+                      <!-- STEP BACK 1 FRAME -->
+                      <button @click="stepFrame(-1)" 
+                              title="Paso atrás (←)"
+                              class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+                        <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                      </button>
+
+                      <!-- PLAY / PAUSE -->
+                      <button @click="togglePlay()" 
+                              :title="isPlaying ? 'Pausar' : 'Reproducir'"
+                              :class="isPlaying ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-accent-600 hover:bg-accent-500 text-white'"
+                              class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow-md">
+                        <i :data-lucide="isPlaying ? 'pause' : 'play'" class="w-3.5 h-3.5 fill-current"></i>
+                        <span x-text="isPlaying ? 'Pausar' : 'Reproducir'"></span>
+                      </button>
+
+                      <!-- STEP FORWARD 1 FRAME -->
+                      <button @click="stepFrame(1)" 
+                              title="Paso adelante (→)"
+                              class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+                        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                      </button>
+                    </div>
+
+                    <!-- SELECTOR DE VELOCIDAD DE REPRODUCCIÓN -->
+                    <div class="flex items-center space-x-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+                      <span class="text-[10px] text-slate-400 px-1 font-sans hidden sm:inline">Velocidad:</span>
+                      <template x-for="rate in speedOptions" :key="rate">
+                        <button @click="setSpeed(rate)" 
+                                :class="playbackRate === rate ? 'bg-brand-600 text-white font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+                                class="px-1.5 py-0.5 rounded text-[10px] font-mono transition"
+                                x-text="rate + 'x'">
+                        </button>
+                      </template>
+                    </div>
+
+                    <!-- BOTON EXPANDIR -->
+                    <div class="flex items-center space-x-1">
+                      <button @click="openTheater(step, currentFrame, playbackRate)" 
+                              title="Ver en Pantalla Completa"
+                              class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+                        <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-brand-400"></i>
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+
+                <!-- FOOTER DE ESTADO -->
+                <div class="w-full flex items-center justify-between mt-2.5 text-xs text-slate-400">
+                  <span class="flex items-center space-x-1 text-accent-400 font-medium text-[11px]">
+                    <i data-lucide="check-check" class="w-3.5 h-3.5 text-accent-500"></i>
+                    <span x-text="step.badge"></span>
+                  </span>
+                  <span class="text-[11px] text-slate-400" x-text="'📍 ' + step.location"></span>
+                </div>
+              </div>
+
+              <!-- CONTENIDO EXPLICATIVO: GUÍA 1-2-3 COMO CAPÍTULOS CLICABLES -->
+              <div class="lg:w-5/12 p-5 sm:p-6 flex flex-col justify-between space-y-4">
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                      <span class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center justify-center text-xs font-bold font-mono" x-text="step.stepNumber"></span>
+                      <span class="text-xs font-bold uppercase tracking-wider text-brand-400" x-text="step.category"></span>
+                    </div>
+                    <span class="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700" x-text="step.scope"></span>
+                  </div>
+
+                  <h3 class="text-lg font-bold text-white tracking-tight leading-snug" x-text="step.title"></h3>
+                  <p class="text-xs sm:text-sm text-slate-300 leading-relaxed" x-text="step.description"></p>
+                  
+                  <!-- CAPÍTULOS INTERACTIVOS 1-2-3 (HACER CLIC SALTA EN EL VIDEO) -->
+                  <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2.5 shadow-inner">
+                    <div class="flex items-center justify-between">
+                      <div class="text-[11px] font-bold uppercase tracking-wider text-accent-400 flex items-center space-x-1.5">
+                        <i data-lucide="list-checks" class="w-4 h-4"></i>
+                        <span>Capítulos Rápidos (Haz clic para ver):</span>
+                      </div>
+                      <span class="text-[10px] text-slate-400 font-mono">1-Clic Salta al Video</span>
+                    </div>
+                    
+                    <div class="space-y-2 text-xs">
+                      <template x-for="(chapter, cIdx) in step.chapters" :key="cIdx">
+                        <button @click="jumpToChapter(chapter.frame)" 
+                                :class="isChapterActive(chapter) ? 'border-brand-500 bg-brand-950/60 ring-1 ring-brand-500/50 shadow-md' : 'border-slate-800/80 bg-slate-950/60 hover:bg-slate-900 hover:border-slate-700'"
+                                class="w-full text-left p-2.5 rounded-xl border transition flex items-start space-x-2.5 group">
+                          <span :class="isChapterActive(chapter) ? 'bg-brand-500 text-white' : 'bg-slate-800 text-slate-300 group-hover:bg-slate-700'" 
+                                class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shrink-0 mt-0.5 transition"
+                                x-text="chapter.timestamp"></span>
+                          <div class="flex-1">
+                            <strong class="text-white block text-[11px]" x-text="chapter.title"></strong>
+                            <span class="text-slate-300 text-[11px] leading-snug" x-text="chapter.detail"></span>
+                          </div>
+                          <i data-lucide="play-circle" :class="isChapterActive(chapter) ? 'text-brand-400' : 'text-slate-500 group-hover:text-white'" class="w-4 h-4 shrink-0 mt-1 transition"></i>
+                        </button>
+                      </template>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- CONSEJOS PRÁCTICOS / TRANQUILIDAD -->
+                <div class="space-y-2 pt-2 border-t border-slate-800/80">
+                  <h4 class="text-xs font-semibold text-slate-400 flex items-center space-x-1">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-accent-500"></i>
+                    <span>Beneficios y Tranquilidad:</span>
+                  </h4>
+                  <ul class="space-y-1.5 text-xs text-slate-300">
+                    <template x-for="tip in step.tips" :key="tip">
+                      <li class="flex items-start space-x-2">
+                        <i data-lucide="check" class="w-3.5 h-3.5 text-accent-500 shrink-0 mt-0.5"></i>
+                        <span x-text="tip"></span>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+
+              </div>
+
+            </article>
+          </template>
+        </div>
+      </section>
+
+      <!-- FREQUENT ISSUES: PREGUNTAS DE ORO Y PAZ MENTAL -->
+      <section class="bg-darkcard border border-darkborder rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2.5">
+            <div class="p-2 rounded-xl bg-accent-amber/10 border border-accent-amber/20 text-accent-amber">
+              <i data-lucide="help-circle" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">Preguntas Frecuentes, Seguridad y Paz Mental</h3>
+              <p class="text-xs text-slate-400">Respuestas claras a situaciones reales durante el servicio en la iglesia</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-2.5 pt-2">
+          <template x-for="(faq, fIndex) in faqs" :key="fIndex">
+            <div class="border border-slate-800 rounded-xl overflow-hidden transition">
+              <button @click="faq.open = !faq.open" class="w-full p-3.5 bg-slate-900/70 hover:bg-slate-900 flex items-center justify-between text-left text-xs sm:text-sm font-semibold text-slate-200 transition">
+                <span x-text="faq.question"></span>
+                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="faq.open ? 'rotate-180 text-brand-400' : ''"></i>
+              </button>
+              <div x-show="faq.open" class="p-4 bg-slate-950 text-xs text-slate-300 leading-relaxed border-t border-slate-800 space-y-2">
+                <p x-html="faq.answer"></p>
+              </div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL TEATRO DE INSPECCIÓN EN PANTALLA COMPLETA -->
+  <div x-show="theaterModal.open" 
+       x-transition.opacity
+       @keydown.escape.window="closeTheater()"
+       class="fixed inset-0 z-50 bg-black/95 backdrop-blur-lg flex items-center justify-center p-2 sm:p-4"
+       style="display: none;"
+       x-data="theaterPlayer()">
+    
+    <div class="relative max-w-6xl w-full bg-darkcard border border-darkborder rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[96vh]"
+         @click.away="closeTheater()">
+      
+      <!-- TEATRO HEADER -->
+      <div class="p-3.5 border-b border-darkborder flex items-center justify-between bg-slate-900/90">
+        <div class="flex items-center space-x-3">
+          <div class="p-1.5 rounded-lg bg-brand-500/20 text-brand-400 border border-brand-500/30">
+            <i data-lucide="video" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-white flex items-center space-x-2">
+              <span x-text="theaterModal.step?.title || 'Video Guía'"></span>
+            </h3>
+            <p class="text-[11px] text-slate-400" x-text="(theaterModal.step?.category || 'Guía Operativa') + ' • Reproducción Continua a Velocidad Natural'"></p>
+          </div>
+        </div>
+        <button @click="closeTheater()" class="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- TEATRO MAIN SCREEN -->
+      <div class="p-2 sm:p-4 overflow-auto custom-scrollbar flex flex-col items-center justify-center bg-black/90 relative">
+        <div class="relative w-full max-w-4xl aspect-video rounded-xl overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center">
+          <canvas x-ref="theaterCanvas" 
+                  @click="togglePlay()"
+                  class="w-full h-full object-contain cursor-pointer"></canvas>
+
+          <!-- OVERLAY PLAY/PAUSE -->
+          <div x-show="!isPlaying" 
+               @click="togglePlay()"
+               class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] cursor-pointer z-10">
+            <div class="w-16 h-16 rounded-2xl bg-accent-600 text-white flex items-center justify-center shadow-2xl ring-4 ring-white/20 transition-transform transform hover:scale-110">
+              <i data-lucide="play" class="w-8 h-8 fill-current ml-1"></i>
+            </div>
+          </div>
+
+          <!-- HUD FRAME OVERLAY -->
+          <div class="absolute top-3 left-3 pointer-events-none z-10">
+            <span class="px-2.5 py-1 rounded-lg bg-slate-950/90 backdrop-blur-md text-xs font-mono text-brand-300 border border-brand-500/40">
+              <span x-text="'Cuadro: ' + (currentFrame + 1) + ' / ' + totalFrames"></span>
+            </span>
+          </div>
+
+          <div class="absolute top-3 right-3 pointer-events-none z-10">
+            <span class="px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-xs font-semibold text-slate-300 border border-white/10 flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full" :class="isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'"></span>
+              <span x-text="isPlaying ? 'REPRODUCIENDO' : 'PAUSADO'"></span>
+            </span>
+          </div>
+        </div>
+
+        <!-- NARRACIÓN EN VIVO EN TEATRO -->
+        <div class="w-full max-w-4xl mt-3 p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-brand-200 flex items-center space-x-2">
+          <i data-lucide="message-square" class="w-4 h-4 text-brand-400 shrink-0"></i>
+          <p class="text-xs text-slate-200 font-medium" x-text="currentNarration"></p>
+        </div>
+      </div>
+
+      <!-- TEATRO CONTROLS BAR -->
+      <div class="p-3 sm:p-4 bg-slate-900 border-t border-darkborder space-y-3">
+        <!-- SCRUBBER -->
+        <div class="w-full flex items-center space-x-3">
+          <span class="text-xs font-mono text-slate-300 font-semibold shrink-0" x-text="currentTimeFormatted"></span>
+          <div class="relative flex-1 flex items-center">
+            <input type="range" 
+                   class="scrubber-slider" 
+                   min="0" 
+                   :max="Math.max(0, totalFrames - 1)" 
+                   :value="currentFrame" 
+                   @input="onScrub($event)"
+                   @mousedown="pause()"
+                   @touchstart="pause()">
+          </div>
+          <span class="text-xs font-mono text-slate-400 shrink-0" x-text="totalDurationFormatted"></span>
+        </div>
+
+        <!-- BUTTONS & SPEEDS -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center space-x-2">
+            <button @click="restart()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition flex items-center space-x-1">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span>Reiniciar (R)</span>
+            </button>
+            <button @click="stepFrame(-1)" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition" title="Paso atrás (←)">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <button @click="togglePlay()" 
+                    :class="isPlaying ? 'bg-slate-700 hover:bg-slate-600' : 'bg-accent-600 hover:bg-accent-500'"
+                    class="px-4 py-1.5 rounded-xl text-xs font-bold text-white transition flex items-center space-x-1.5 shadow-lg">
+              <i :data-lucide="isPlaying ? 'pause' : 'play'" class="w-4 h-4 fill-current"></i>
+              <span x-text="isPlaying ? 'Pausar' : 'Reproducir'"></span>
+            </button>
+            <button @click="stepFrame(1)" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition" title="Paso adelante (→)">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- VELOCIDADES -->
+          <div class="flex items-center space-x-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <span class="text-xs text-slate-400 px-2">Velocidad:</span>
+            <template x-for="rate in [0.25, 0.5, 1.0, 2.0]" :key="rate">
+              <button @click="setSpeed(rate)" 
+                      :class="playbackRate === rate ? 'bg-brand-600 text-white font-bold shadow-md' : 'text-slate-400 hover:text-slate-200'"
+                      class="px-2.5 py-1 rounded-lg text-xs font-mono transition"
+                      x-text="rate + 'x'">
+              </button>
+            </template>
+          </div>
+
+          <div class="hidden md:flex items-center text-xs text-slate-400">
+            <span>Presiona <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-200 font-mono text-[10px]">Espacio</kbd> para pausar</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM NAVIGATION (MOBILE ONLY) -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-darkcard/95 backdrop-blur-lg border-t border-darkborder px-2 py-1.5 flex justify-around items-center text-slate-400">
+    <template x-for="role in roles.slice(0, 4)" :key="role.id">
+      <button @click="activeRole = role.id" 
+              :class="activeRole === role.id ? 'text-brand-400 font-semibold' : 'text-slate-400'"
+              class="flex flex-col items-center p-1 text-[10px] transition">
+        <i :data-lucide="role.icon" class="w-4 h-4 mb-0.5"></i>
+        <span x-text="role.shortName"></span>
+      </button>
+    </template>
+    <a href="http://localhost:3002" target="_blank" class="flex flex-col items-center p-1 text-[10px] text-accent-400 hover:text-white">
+      <i data-lucide="play" class="w-4 h-4 mb-0.5 text-accent-400"></i>
+      <span>POS</span>
+    </a>
+  </nav>
+
+  <!-- FOOTER -->
+  <footer class="bg-darkcard border-t border-darkborder mt-auto py-6">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 space-y-1">
+      <p>AvivaCheck POS — Desarrollado con excelencia y honradez para el servicio de la congregación</p>
+      <p class="text-[11px] text-slate-500">Respaldado con grabaciones de flujo continuo Playwright E2E a velocidad humana</p>
+    </div>
+  </footer>
+
+  <!-- SCRIPT ENGINE: NATIVE ZERO-CORS & INTERACTIVE CHAPTERS ENGINE -->
+  <script>
+    document.addEventListener('alpine:init', () => {
+      
+      // Componente Principal del Portal
+      Alpine.data('docsPortal', () => ({
+        searchQuery: '',
+        activeRole: 'all',
+        allPlaying: true,
+        theaterModal: { open: false, step: null, startFrame: 0, speed: 1.0 },
+
+        roles: [
+          { 
+            id: 'all', 
+            name: 'Visión General',
+            shortName: 'Todos', 
+            icon: 'grid', 
+            iconColor: 'text-slate-400', 
+            title: 'Guía Completa de Uso del Sistema',
+            description: 'Aprende cómo funciona el punto de venta de principio a fin, con videos interactivos que muestran exactamente cómo dar de alta productos, cobrar y hacer cortes de caja.',
+            hierarchy: 'Para todo el equipo'
+          },
+          { 
+            id: 'pastor', 
+            name: 'Pastor / Admin', 
+            shortName: 'Pastor', 
+            icon: 'crown', 
+            iconColor: 'text-accent-amber', 
+            title: 'Manual del Pastor y Administración', 
+            description: 'Cómo registrar tu iglesia, activar los departamentos (Cafetería, Librería, Comedor) y supervisar los reportes de ventas en tiempo real.',
+            hierarchy: 'Administración Principal'
+          },
+          { 
+            id: 'leader', 
+            name: 'Líder Depto.', 
+            shortName: 'Líder', 
+            icon: 'shield', 
+            iconColor: 'text-brand-400', 
+            title: 'Manual del Líder (Cafetería / Librería)', 
+            description: 'Cómo registrar los productos que venderás, dar de alta a tus cajeros o cocineros y revisar que el dinero cuadre con total transparencia.',
+            hierarchy: 'Coordinación y Supervisión'
+          },
+          { 
+            id: 'cashier', 
+            name: 'Cajero en Mostrador', 
+            shortName: 'Cajero', 
+            icon: 'shopping-cart', 
+            iconColor: 'text-accent-500', 
+            title: 'Manual del Cajero (Punto de Venta)', 
+            description: 'Cómo iniciar tu turno con el fondo inicial, agregar productos al carrito, cobrar en efectivo y hacer tu corte de caja final sin enredos.',
+            hierarchy: 'Atención al Cliente y Cobro'
+          },
+          { 
+            id: 'kitchen', 
+            name: 'Cocina y Despacho', 
+            shortName: 'Cocina', 
+            icon: 'chef-hat', 
+            iconColor: 'text-purple-400', 
+            title: 'Manual de la Pantalla de Cocina (KDS)', 
+            description: 'Cómo ver los pedidos pagados en caja en tiempo real y marcarlos como listos cuando la comida esté servida y entregada.',
+            hierarchy: 'Preparación y Entrega'
+          }
+        ],
+
+        steps: [
+          {
+            id: 1,
+            stepNumber: 1,
+            roleId: 'pastor',
+            category: 'Registro Inicial',
+            scope: 'Solo se hace una vez',
+            frameCount: 160,
+            title: '1. Cómo Registrar tu Iglesia y tu Primer Departamento',
+            description: 'El pastor crea la cuenta de la iglesia ingresando su nombre y correo. En seguida, un asistente amigable en 3 pasos le pide el nombre de la congregación, un producto inicial (ej. Café) y el correo del hermano líder que coordinará el área.',
+            location: 'Pantalla de Registro Inicial',
+            badge: '✅ Registro Seguro en 1 Minuto',
+            image: 'assets/images/test-finished-1.png',
+            chapters: [
+              { timestamp: '⏱️ 0:02', frame: 5, endFrame: 50, title: '📍 1. Dónde dar clic:', detail: 'Entra a la página de Registro e ingresa tu nombre, correo pastoral y contraseña.' },
+              { timestamp: '⏱️ 0:12', frame: 55, endFrame: 105, title: '✍️ 2. Qué ingresar:', detail: 'Escribe el nombre de tu congregación y el nombre de tu primer producto inicial.' },
+              { timestamp: '⏱️ 0:26', frame: 110, endFrame: 160, title: '🧾 3. Resultado:', detail: 'Asigna el líder del área y ¡listo! La iglesia queda abierta para empezar a servir.' }
+            ],
+            tips: [
+              'Solo necesitas hacer este registro la primera vez que se use el sistema.',
+              'El correo del pastor queda como administrador general con acceso total.',
+              'No requieres conocimientos técnicos ni ayuda de programadores.'
+            ],
+            narrations: [
+              { endFrame: 50, text: '📍 1. El pastor llena el formulario de registro con su nombre, correo y contraseña.' },
+              { endFrame: 105, text: '✨ 2. Se abre el asistente de bienvenida para ingresar el nombre de la congregación y producto inicial.' },
+              { endFrame: 160, text: '🎉 3. Se asigna el líder del área y la iglesia queda lista para operar de inmediato.' }
+            ],
+            tags: ['signup', 'onboarding', 'pastor', 'iglesia']
+          },
+          {
+            id: 2,
+            stepNumber: 2,
+            roleId: 'leader',
+            category: 'Equipo de Servicio',
+            scope: 'Cafetería / Librería',
+            frameCount: 160,
+            title: '2. Cómo dar de alta a tus Cajeros y Cocineros',
+            description: 'El líder del departamento entra a la sección de Usuarios para crear las cuentas de los hermanos que estarán cobrando en caja o despachando en cocina, asignándoles su rol con un solo clic.',
+            location: 'Menú > Usuarios y Permisos',
+            badge: '✅ Cuentas Protegidas',
+            image: 'assets/images/test-finished-2.png',
+            chapters: [
+              { timestamp: '⏱️ 0:02', frame: 5, endFrame: 45, title: '📍 1. Dónde dar clic:', detail: 'Ve al menú lateral izquierdo y presiona la opción "Usuarios".' },
+              { timestamp: '⏱️ 0:10', frame: 50, endFrame: 100, title: '✍️ 2. Qué ingresar:', detail: 'Toca el botón azul "Nuevo Usuario" y escribe el correo y nombre del hermano.' },
+              { timestamp: '⏱️ 0:24', frame: 105, endFrame: 160, title: '🧾 3. Resultado:', detail: 'Elige su función ("Cajero" o "Cocina") y presiona "Crear Usuario".' }
+            ],
+            tips: [
+              'Cada voluntario tiene su propio acceso para saber quién cobró cada venta.',
+              'Puedes pausar un acceso en cualquier momento si un voluntario cambia de área.',
+              'Las contraseñas se generan de forma fácil y segura sin enredos.'
+            ],
+            narrations: [
+              { endFrame: 45, text: '📍 1. El líder entra a la pantalla de Usuarios y ve la lista de su equipo de servicio.' },
+              { endFrame: 100, text: '✍️ 2. Presiona "Nuevo Usuario" y llena los datos del hermano voluntario.' },
+              { endFrame: 160, text: '✅ 3. Selecciona la función de Cajero o Cocina y guarda la cuenta lista para usarse.' }
+            ],
+            tags: ['usuarios', 'roles', 'cajeros', 'lider']
+          },
+          {
+            id: 3,
+            stepNumber: 3,
+            roleId: 'leader',
+            category: 'Menú y Precios',
+            scope: 'Cafetería / Librería',
+            frameCount: 160,
+            title: '3. Cómo registrar tus Productos y Precios',
+            description: 'El líder registra lo que se va a vender (ej. Café, Empanadas, Biblias, Cuadernos) con su precio exacto. El cajero solo tendrá que tocar la foto en la pantalla y el precio saldrá automáticamente sin errores.',
+            location: 'Menú > Catálogo de Productos',
+            badge: '✅ Precios Oficiales Blindados',
+            image: 'assets/images/catalog-alpha.png',
+            chapters: [
+              { timestamp: '⏱️ 0:02', frame: 5, endFrame: 45, title: '📍 1. Dónde dar clic:', detail: 'Entra a la sección "Productos" desde el menú del líder.' },
+              { timestamp: '⏱️ 0:11', frame: 50, endFrame: 105, title: '✍️ 2. Qué ingresar:', detail: 'Presiona "Nuevo Producto", escribe el nombre y el precio oficial autorizado.' },
+              { timestamp: '⏱️ 0:25', frame: 110, endFrame: 160, title: '🧾 3. Resultado:', detail: 'Guarda el producto y aparecerá al instante en la pantalla de cobro del mostrador.' }
+            ],
+            tips: [
+              'Los cajeros no pueden alterar los precios, garantizando que el dinero siempre cuadre.',
+              'Puedes pausar un producto con un clic si se terminó en el día.',
+              'Los productos de cafetería no se mezclan con los de la librería.'
+            ],
+            narrations: [
+              { endFrame: 45, text: '📍 1. El líder abre el catálogo de productos de su departamento.' },
+              { endFrame: 105, text: '✍️ 2. Toca "Nuevo Producto" e ingresa el nombre (ej. Café Americano) y precio.' },
+              { endFrame: 160, text: '✨ 3. El producto queda guardado y listo para venderse en el mostrador.' }
+            ],
+            tags: ['productos', 'catalogo', 'precios', 'menu']
+          },
+          {
+            id: 4,
+            stepNumber: 4,
+            roleId: 'cashier',
+            category: 'Inicio de Turno',
+            scope: 'Cada domingo / servicio',
+            frameCount: 160,
+            title: '4. Cómo Iniciar tu Turno e Ingresar el Fondo de Caja',
+            description: 'Al llegar a tu turno de servicio y abrir el punto de venta, la pantalla te pedirá el fondo inicial de cambio (ej. $200 para dar cambio). Una vez ingresado, el mostrador se activa para empezar a vender.',
+            location: 'Pantalla de Punto de Venta (POS)',
+            badge: '✅ Fondo Registrado con Seguridad',
+            image: 'assets/images/test-finished-3.png',
+            chapters: [
+              { timestamp: '⏱️ 0:02', frame: 5, endFrame: 40, title: '📍 1. Dónde dar clic:', detail: 'Abre el Punto de Venta en tu computadora o tablet al iniciar tu turno.' },
+              { timestamp: '⏱️ 0:10', frame: 45, endFrame: 95, title: '✍️ 2. Qué ingresar:', detail: 'En la ventana emergente, escribe cuánto dinero tienes en billetes para cambio.' },
+              { timestamp: '⏱️ 0:23', frame: 100, endFrame: 160, title: '🧾 3. Resultado:', detail: 'Presiona el botón verde "Abrir Caja" y el mostrador se desbloqueará de inmediato.' }
+            ],
+            tips: [
+              'Protección contra descuidos: Nadie puede cobrar sin haber registrado primero su fondo.',
+              'Si varios hermanos cobran en la misma máquina, pueden elegir "Caja Compartida".',
+              'El fondo inicial se descuenta automáticamente en el corte final para no contar como venta.'
+            ],
+            narrations: [
+              { endFrame: 40, text: '📍 1. El cajero abre la pantalla de ventas al iniciar su servicio en la iglesia.' },
+              { endFrame: 95, text: '💵 2. Aparece la ventana de apertura pidiendo el dinero para dar cambio.' },
+              { endFrame: 160, text: '🔓 3. Digita el monto del fondo (ej. $200.00) y el mostrador queda listo para cobrar.' }
+            ],
+            tags: ['apertura', 'fondo', 'caja', 'cajero']
+          },
+          {
+            id: 5,
+            stepNumber: 5,
+            roleId: 'cashier',
+            category: 'Ventas y Cobro',
+            scope: 'Mostrador en Vivo',
+            frameCount: 160,
+            title: '5. Cómo Cobrar un Pedido y Dar Cambio al Cliente',
+            description: 'El hermano cajero toca en la pantalla los productos que pide la persona. Luego toca el botón verde "Cobrar", escribe con cuánto le pagan y el sistema le dice exactamente cuánto cambio debe regresar y emite el ticket.',
+            location: 'Mostrador de Cobro (POS)',
+            badge: '✅ Cero Pérdidas de Dinero',
+            image: 'assets/images/test-finished-5.png',
+            chapters: [
+              { timestamp: '⏱️ 0:02', frame: 5, endFrame: 45, title: '📍 1. Dónde dar clic:', detail: 'Toca los productos que pide el cliente (se agregarán a la comanda a la derecha).' },
+              { timestamp: '⏱️ 0:11', frame: 50, endFrame: 100, title: '✍️ 2. Qué ingresar:', detail: 'Presiona el botón verde "Cobrar" y escribe el dinero que te entrega la persona.' },
+              { timestamp: '⏱️ 0:24', frame: 105, endFrame: 160, title: '🧾 3. Resultado:', detail: 'Verifica el cambio que indica la pantalla, entrega el ticket y ¡listo!' }
+            ],
+            tips: [
+              'No necesitas calculadora: el sistema calcula el total y el cambio exacto sin errores.',
+              'Si el pedido es de comida, pasa automáticamente a la pantalla de cocina al instante.',
+              'Aunque se caiga el internet momentáneamente, el cobro queda seguro y registrado.'
+            ],
+            narrations: [
+              { endFrame: 45, text: '📍 1. El cajero toca los productos en pantalla para agregarlos al pedido del cliente.' },
+              { endFrame: 100, text: '💵 2. Presiona "Cobrar", escribe el dinero recibido y la pantalla muestra el cambio exacto.' },
+              { endFrame: 160, text: '🧾 3. Se confirma la venta, se genera el ticket con su número y la comanda viaja a cocina.' }
+            ],
+            tags: ['checkout', 'pos', 'cobro', 'cambio']
+          },
+          {
+            id: 6,
+            stepNumber: 6,
+            roleId: 'kitchen',
+            category: 'Cocina en Vivo',
+            scope: 'Área de Alimentos',
+            frameCount: 160,
+            title: '6. Cómo Preparar y Entregar Comandas en Cocina',
+            description: 'En la cocina tienen una pantalla o tablet donde los pedidos pagados en caja aparecen solos al instante. Los cocineros preparan la comida y, al entregarla, solo tocan el botón verde "Completar".',
+            location: 'Pantalla de Cocina (KDS)',
+            badge: '⚡ Sincronización Inmediata',
+            image: 'assets/images/kds-alpha-after.png',
+            chapters: [
+              { timestamp: '⏱️ 0:02', frame: 5, endFrame: 40, title: '📍 1. Dónde dar clic:', detail: 'Mantén la pantalla de Cocina abierta en una tablet o computadora del área.' },
+              { timestamp: '⏱️ 0:10', frame: 45, endFrame: 100, title: '✍️ 2. Qué ingresar:', detail: 'Cuando caja cobre, el pedido aparecerá de inmediato con su número de orden.' },
+              { timestamp: '⏱️ 0:24', frame: 105, endFrame: 160, title: '🧾 3. Resultado:', detail: 'Cuando entregues el platillo caliente, presiona el botón verde "Completar".' }
+            ],
+            tips: [
+              'Se acabaron los papelitos perdidos o pedidos olvidados en el mostrador.',
+              'Cada tarjeta muestra el tiempo transcurrido para atender rápido a los hermanos.',
+              'Si se terminó un ingrediente, puedes tocar "Rechazar" y se avisa a caja.'
+            ],
+            narrations: [
+              { endFrame: 40, text: '📍 1. La cocina tiene la pantalla abierta esperando pedidos.' },
+              { endFrame: 100, text: '🔔 2. En cuanto caja cobra, la orden aparece sola con su número de ticket y detalle.' },
+              { endFrame: 160, text: '✅ 3. Al entregar la comida servida, presionan "Completar" y la orden se despacha.' }
+            ],
+            tags: ['kds', 'cocina', 'comandas', 'pedidos']
+          },
+          {
+            id: 7,
+            stepNumber: 7,
+            roleId: 'leader',
+            category: 'Venta Directa',
+            scope: 'Librería / Souvenirs',
+            frameCount: 160,
+            title: '7. Venta Directa de Libros y Materiales (Sin Cocina)',
+            description: 'En áreas como la Librería o venta de Biblias no se necesita preparar nada. El sistema permite entregar el libro en la mano del cliente en cuanto paga, sin saturar la pantalla de la cocina.',
+            location: 'Configuración de Librería',
+            badge: '⚡ Entrega Instantánea',
+            image: 'assets/images/catalog-beta.png',
+            chapters: [
+              { timestamp: '⏱️ 0:02', frame: 5, endFrame: 40, title: '📍 1. Dónde dar clic:', detail: 'En Usuarios, activa el interruptor "Auto-Entrega" para la Librería.' },
+              { timestamp: '⏱️ 0:10', frame: 45, endFrame: 95, title: '✍️ 2. Qué ingresar:', detail: 'El cajero cobra el libro o material impreso en el mostrador en efectivo.' },
+              { timestamp: '⏱️ 0:23', frame: 100, endFrame: 160, title: '🧾 3. Resultado:', detail: 'La venta queda terminada y entregada al instante en un solo paso.' }
+            ],
+            tips: [
+              'Ahorra tiempo en mostrador: el cliente paga y se lleva su libro de inmediato.',
+              'La cocina solo recibe pedidos de comida, manteniendo su pantalla limpia y enfocada.',
+              'Todo el dinero entra a los reportes de ventas con total claridad para tesorería.'
+            ],
+            narrations: [
+              { endFrame: 40, text: '📍 1. El líder activa la opción "Auto-Entrega" para el cajero de libros.' },
+              { endFrame: 95, text: '📚 2. El cajero selecciona las Biblias o libros solicitados y cobra el total.' },
+              { endFrame: 160, text: '🎁 3. La venta se finaliza como "Entregada" de inmediato sin pasar por cocina.' }
+            ],
+            tags: ['libreria', 'auto-entrega', 'libros', 'biblias']
+          },
+          {
+            id: 8,
+            stepNumber: 8,
+            roleId: 'cashier',
+            category: 'Cierre de Turno',
+            scope: 'Al terminar el servicio',
+            frameCount: 160,
+            title: '8. Cómo Contar el Dinero y Cerrar tu Turno de Caja',
+            description: 'Al terminar el culto o evento, el cajero va a la pantalla de Corte de Caja, cuenta todo el dinero físico que tiene en su cajón y lo escribe. El sistema compara lo esperado con lo contado y emite el resumen final.',
+            location: 'Menú > Corte de Caja',
+            badge: '✅ Cuentas Claras y Transparentes',
+            image: 'assets/images/test-finished-7.png',
+            chapters: [
+              { timestamp: '⏱️ 0:02', frame: 5, endFrame: 40, title: '📍 1. Dónde dar clic:', detail: 'Entra a "Corte de Caja" en el menú al terminar tu horario de servicio.' },
+              { timestamp: '⏱️ 0:10', frame: 45, endFrame: 100, title: '✍️ 2. Qué ingresar:', detail: 'Cuenta el dinero físico de tu cajón (billetes y monedas) y escribe la cantidad exacta.' },
+              { timestamp: '⏱️ 0:24', frame: 105, endFrame: 160, title: '🧾 3. Resultado:', detail: 'Presiona "Cerrar Turno" para obtener tu comprobante de corte para el sobre.' }
+            ],
+            tips: [
+              'Transparencia total: el sistema muestra con exactitud si sobró o faltó dinero.',
+              'Una vez cerrada la caja, nadie puede hacer más cobros con tu nombre o turno.',
+              'El reporte queda listo para la entrega del sobre al tesorero o pastor.'
+            ],
+            narrations: [
+              { endFrame: 40, text: '📍 1. El cajero entra a la pantalla de Corte de Caja al terminar su turno.' },
+              { endFrame: 100, text: '💵 2. Cuenta los billetes y monedas que tiene en el cajón y escribe el monto contado.' },
+              { endFrame: 160, text: '🔒 3. Presiona "Cerrar Turno" y se emite el comprobante de corte final para tesorería.' }
+            ],
+            tags: ['cierre', 'corte', 'arqueo', 'cajero']
+          },
+          {
+            id: 9,
+            stepNumber: 9,
+            roleId: 'leader',
+            category: 'Rescate de Caja',
+            scope: 'Casos especiales',
+            frameCount: 160,
+            title: '9. Qué hacer si un Cajero se fue sin Cerrar su Caja',
+            description: 'Si un hermano voluntario tuvo una emergencia familiar y tuvo que retirarse sin hacer su corte, ¡no te preocupes! El líder puede entrar, contar el dinero del mostrador y cerrar la caja con una pequeña nota explicativa.',
+            location: 'Corte de Caja > Cajas Abiertas',
+            badge: '🛡️ Rescate Seguro sin Pérdidas',
+            image: 'assets/images/test-finished-9.png',
+            chapters: [
+              { timestamp: '⏱️ 0:02', frame: 5, endFrame: 40, title: '📍 1. Dónde dar clic:', detail: 'Entra a "Corte de Caja" con tu cuenta de Líder o Pastor.' },
+              { timestamp: '⏱️ 0:10', frame: 45, endFrame: 95, title: '✍️ 2. Qué ingresar:', detail: 'Ubica la caja abierta, presiona "Pre-cerrar (Contingencia)" y anota el dinero contado.' },
+              { timestamp: '⏱️ 0:23', frame: 100, endFrame: 160, title: '🧾 3. Resultado:', detail: 'Escribe una breve nota explicativa y confirma el cierre de forma segura.' }
+            ],
+            tips: [
+              'Tranquilidad: Ninguna venta se pierde ni se descuadra el dinero de la iglesia.',
+              'La caja se cierra para que el siguiente turno pueda empezar a tiempo sin bloqueos.',
+              'Queda registrado quién hizo el rescate para total claridad de la congregación.'
+            ],
+            narrations: [
+              { endFrame: 40, text: '📍 1. El líder detecta una caja abierta que no fue cerrada a tiempo.' },
+              { endFrame: 95, text: '🛡️ 2. Presiona "Pre-cerrar Caja (Contingencia)" y digita el dinero contado en mostrador.' },
+              { endFrame: 160, text: '✅ 3. Agrega la nota explicativa y la caja queda asegurada sin perder un solo centavo.' }
+            ],
+            tags: ['contingencia', 'pre-cierre', 'rescate', 'lider']
+          }
+        ],
+
+        faqs: [
+          {
+            question: "¿Qué pasa si se corta la luz o el internet en pleno cobro de un pedido?",
+            answer: "<strong>Tu dinero y tus ventas están 100% seguros.</strong> El sistema guarda cada venta en el mismo instante en que se confirma el pago. Si se corta la energía o la conexión a internet a mitad del proceso, la venta no se cobra a medias ni se generan órdenes duplicadas; al volver la luz, tu caja sigue exactamente intacta y el dinero cuadrado.",
+            open: false
+          },
+          {
+            question: "¿Puede un voluntario o cajero cambiar el precio de un producto para cobrar de más o de menos?",
+            answer: "<strong>Es totalmente imposible.</strong> En la pantalla de cobro del mostrador los precios están blindados: el cajero solo toca la foto del producto y el sistema aplica el precio oficial configurado por el Líder o Pastor. Ningún cajero puede editar precios al cobrar.",
+            open: false
+          },
+          {
+            question: "¿El Pastor o Tesorero pueden ver las ventas en tiempo real desde su teléfono celular?",
+            answer: "<strong>Sí, en cualquier momento y desde cualquier lugar.</strong> El pastor o administrador solo ingresa a la aplicación web desde su celular con su cuenta y podrá ver las ventas minuto a minuto, los productos más vendidos y el saldo de cada caja sin necesidad de estar físicamente en el mostrador.",
+            open: false
+          },
+          {
+            question: "¿Cómo se entrega el dinero al final del día a la tesorería de la iglesia?",
+            answer: "Al terminar el servicio, cada cajero realiza su <strong>Corte de Caja</strong> contando el efectivo físico de su cajón. El sistema emite un comprobante detallado que indica el fondo inicial, las ventas en efectivo y la ganancia neta. Ese comprobante se imprime o guarda digitalmente y se coloca dentro del sobre junto con el dinero para entregarlo a tesorería.",
+            open: false
+          },
+          {
+            question: "¿Qué pasa si un hermano voluntario tuvo una emergencia y se fue sin hacer su corte de caja?",
+            answer: "No te preocupes en absoluto. El Líder de Departamento o Pastor puede entrar a <strong>Corte de Caja</strong>, ver las cajas que quedaron abiertas y presionar <strong>Pre-cerrar (Contingencia)</strong>. Cuenta el dinero que quedó en el cajón, agrega una nota breve (ej. <em>'Hermano Juan tuvo que salir temprano por urgencia familiar'</em>) y la caja queda cerrada y respaldada.",
+            open: false
+          },
+          {
+            question: "¿Por qué los libros de la Librería no aparecen en la pantalla de la Cocina?",
+            answer: "Porque la Librería tiene activado el modo de <strong>Auto-Entrega</strong>. En venta de libros, Biblias o souvenirs no se requiere preparación de alimentos, por lo que el sistema entrega la orden en la mano del cliente en el mismo segundo en que paga, manteniendo la pantalla de cocina limpia solo con platillos y bebidas.",
+            open: false
+          },
+          {
+            question: "¿Se puede cobrar desde dos computadoras o celulares usando una sola caja de dinero?",
+            answer: "<strong>¡Sí!</strong> Al momento de abrir la caja al inicio del turno, seleccionen la modalidad <strong>Caja Compartida</strong>. Ambos hermanos sumarán sus ventas a la misma caja física y al final del servicio realizarán un solo corte grupal.",
+            open: false
+          }
+        ],
+
+        getCurrentRole() {
+          return this.roles.find(r => r.id === this.activeRole) || this.roles[0];
+        },
+
+        getStepCountForRole(roleId) {
+          if (roleId === 'all') return this.steps.length;
+          return this.steps.filter(s => s.roleId === roleId).length;
+        },
+
+        get filteredSteps() {
+          let list = this.steps;
+          if (this.activeRole !== 'all') {
+            list = list.filter(s => s.roleId === this.activeRole);
+          }
+          if (this.searchQuery.trim() !== '') {
+            const q = this.searchQuery.toLowerCase();
+            list = list.filter(s => 
+              s.title.toLowerCase().includes(q) ||
+              s.description.toLowerCase().includes(q) ||
+              s.category.toLowerCase().includes(q) ||
+              s.chapters.some(c => c.title.toLowerCase().includes(q) || c.detail.toLowerCase().includes(q)) ||
+              s.tags.some(t => t.toLowerCase().includes(q)) ||
+              s.tips.some(t => t.toLowerCase().includes(q))
+            );
+          }
+          return list;
+        },
+
+        toggleGlobalPlayback() {
+          this.allPlaying = !this.allPlaying;
+          window.dispatchEvent(new CustomEvent('global-playback-toggle', { detail: { isPlaying: this.allPlaying } }));
+        },
+
+        openTheater(step, currentFrame = 0, speed = 1.0) {
+          this.theaterModal = {
+            open: true,
+            step: step,
+            startFrame: currentFrame,
+            speed: speed
+          };
+          window.dispatchEvent(new CustomEvent('open-theater-player', { detail: this.theaterModal }));
+          this.$nextTick(() => lucide.createIcons());
+        },
+
+        closeTheater() {
+          this.theaterModal.open = false;
+          window.dispatchEvent(new CustomEvent('close-theater-player'));
+        },
+
+        handleGlobalKeydown(e) {
+          if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            const searchInput = document.querySelector('input[x-model="searchQuery"]');
+            if (searchInput) searchInput.focus();
+          }
+        }
+      }));
+
+      // Componente del Reproductor Zero-CORS con Capítulos Interactivos
+      Alpine.data('screencastPlayer', (step) => ({
+        step: step,
+        isPlaying: true,
+        currentFrame: 0,
+        totalFrames: step.frameCount || 160,
+        playbackRate: 1.0,
+        baseInterval: 220,
+        images: [],
+        loadedCount: 0,
+        isLoaded: false,
+        canvas: null,
+        ctx: null,
+        timer: null,
+        speedOptions: [0.25, 0.5, 1.0, 1.5, 2.0],
+
+        init() {
+          this.canvas = this.$refs.canvas;
+          if (this.canvas) {
+            this.ctx = this.canvas.getContext('2d');
+          }
+
+          this.totalFrames = this.step.frameCount || 160;
+          this.images = [];
+          this.loadedCount = 0;
+
+          // Precarga nativa Zero-CORS con new Image()
+          for (let i = 1; i <= this.totalFrames; i++) {
+            const img = new Image();
+            const frameNum = String(i).padStart(3, '0');
+            img.src = 'assets/frames/step' + this.step.stepNumber + '/frame_' + frameNum + '.jpg';
+            
+            img.onload = () => {
+              this.loadedCount++;
+              if (this.loadedCount === 1 && this.canvas) {
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                this.canvas.width = (img.naturalWidth || 800) * dpr;
+                this.canvas.height = (img.naturalHeight || 500) * dpr;
+                this.drawFrame(0);
+              }
+              if (this.loadedCount >= 3 && !this.isLoaded) {
+                this.isLoaded = true;
+                this.startPlayback();
+              }
+            };
+            
+            img.onerror = () => {
+              this.loadedCount++;
+              if (!this.isLoaded && this.loadedCount >= 3) {
+                this.isLoaded = true;
+                this.startPlayback();
+              }
+            };
+
+            this.images.push(img);
+          }
+
+          setTimeout(() => {
+            if (!this.isLoaded && this.images.length > 0) {
+              this.isLoaded = true;
+              if (this.canvas && this.images[0].complete) {
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                this.canvas.width = (this.images[0].naturalWidth || 800) * dpr;
+                this.canvas.height = (this.images[0].naturalHeight || 500) * dpr;
+                this.drawFrame(0);
+              }
+              this.startPlayback();
+            }
+          }, 350);
+
+          window.addEventListener('global-playback-toggle', (e) => {
+            if (e.detail.isPlaying) this.play();
+            else this.pause();
+          });
+
+          this.$nextTick(() => lucide.createIcons());
+        },
+
+        destroy() {
+          this.stopPlayback();
+          this.images = [];
+        },
+
+        drawFrame(index) {
+          if (!this.canvas || !this.ctx || !this.images[index]) return;
+          this.currentFrame = index;
+          const img = this.images[index];
+          if (img.complete && img.naturalWidth > 0) {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const targetW = (img.naturalWidth || 800) * dpr;
+            const targetH = (img.naturalHeight || 500) * dpr;
+            if (this.canvas.width !== targetW) {
+              this.canvas.width = targetW;
+              this.canvas.height = targetH;
+            }
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+          }
+        },
+
+        startPlayback() {
+          this.stopPlayback();
+          if (!this.isPlaying) return;
+          const delay = Math.max(30, this.baseInterval / this.playbackRate);
+          this.timer = setInterval(() => {
+            let next = this.currentFrame + 1;
+            if (next >= this.totalFrames) {
+              next = 0;
+            }
+            this.drawFrame(next);
+          }, delay);
+        },
+
+        stopPlayback() {
+          if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+          }
+        },
+
+        play() {
+          this.isPlaying = true;
+          this.startPlayback();
+          this.$nextTick(() => lucide.createIcons());
+        },
+
+        pause() {
+          this.isPlaying = false;
+          this.stopPlayback();
+          this.$nextTick(() => lucide.createIcons());
+        },
+
+        togglePlay() {
+          if (this.isPlaying) {
+            this.pause();
+          } else {
+            if (this.currentFrame >= this.totalFrames - 1) {
+              this.currentFrame = 0;
+              this.drawFrame(0);
+            }
+            this.play();
+          }
+        },
+
+        restart() {
+          this.currentFrame = 0;
+          this.drawFrame(0);
+          this.play();
+        },
+
+        stepFrame(delta) {
+          this.pause();
+          let next = this.currentFrame + delta;
+          if (next < 0) next = 0;
+          if (next >= this.totalFrames) next = this.totalFrames - 1;
+          this.drawFrame(next);
+        },
+
+        setSpeed(rate) {
+          this.playbackRate = rate;
+          if (this.isPlaying) {
+            this.startPlayback();
+          }
+        },
+
+        onScrub(e) {
+          const frame = parseInt(e.target.value, 10);
+          this.currentFrame = frame;
+          this.drawFrame(frame);
+        },
+
+        jumpToChapter(frame) {
+          this.currentFrame = Math.min(frame, this.totalFrames - 1);
+          this.drawFrame(this.currentFrame);
+          this.play();
+        },
+
+        isChapterActive(chapter) {
+          if (!chapter) return false;
+          return this.currentFrame >= chapter.frame && this.currentFrame <= chapter.endFrame;
+        },
+
+        get currentNarration() {
+          if (!this.step.narrations || this.step.narrations.length === 0) return 'Reproduciendo demostración en video...';
+          for (const n of this.step.narrations) {
+            if (this.currentFrame <= n.endFrame) {
+              return n.text;
+            }
+          }
+          return this.step.narrations[this.step.narrations.length - 1].text;
+        },
+
+        formatTimecode(frameIndex) {
+          const totalSeconds = Math.floor((frameIndex * (this.baseInterval / 1000)));
+          const m = Math.floor(totalSeconds / 60);
+          const s = totalSeconds % 60;
+          return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + 's';
+        },
+
+        get currentTimeFormatted() {
+          return this.formatTimecode(this.currentFrame);
+        },
+
+        get totalDurationFormatted() {
+          return this.formatTimecode(this.totalFrames);
+        }
+      }));
+
+      // Componente del Teatro en Pantalla Completa
+      Alpine.data('theaterPlayer', () => ({
+        canvas: null,
+        ctx: null,
+        step: null,
+        isPlaying: true,
+        currentFrame: 0,
+        totalFrames: 160,
+        playbackRate: 1.0,
+        baseInterval: 220,
+        images: [],
+        timer: null,
+
+        init() {
+          this.canvas = this.$refs.theaterCanvas;
+          if (this.canvas) {
+            this.ctx = this.canvas.getContext('2d');
+          }
+
+          window.addEventListener('open-theater-player', (e) => {
+            const detail = e.detail;
+            this.step = detail.step;
+            this.totalFrames = detail.step.frameCount || 160;
+            this.playbackRate = detail.speed || 1.0;
+            this.loadStepFrames(detail.step, detail.startFrame || 0);
+            this.$nextTick(() => lucide.createIcons());
+          });
+
+          window.addEventListener('close-theater-player', () => {
+            this.stopPlayback();
+          });
+
+          window.addEventListener('keydown', (e) => {
+            if (!this.$root.parentElement.querySelector('[x-show="theaterModal.open"]')) return;
+            if (e.code === 'Space') {
+              e.preventDefault();
+              this.togglePlay();
+            } else if (e.code === 'ArrowLeft') {
+              e.preventDefault();
+              this.stepFrame(-1);
+            } else if (e.code === 'ArrowRight') {
+              e.preventDefault();
+              this.stepFrame(1);
+            } else if (e.key === 'r' || e.key === 'R') {
+              this.restart();
+            } else if (['1', '2', '3', '4', '5'].includes(e.key)) {
+              const rates = { '1': 0.25, '2': 0.5, '3': 1.0, '4': 1.5, '5': 2.0 };
+              this.setSpeed(rates[e.key]);
+            }
+          });
+        },
+
+        destroy() {
+          this.stopPlayback();
+          this.images = [];
+        },
+
+        loadStepFrames(step, startFrame = 0) {
+          if (!step) return;
+          this.stopPlayback();
+          this.totalFrames = step.frameCount || 160;
+          this.images = [];
+          
+          for (let i = 1; i <= this.totalFrames; i++) {
+            const img = new Image();
+            const frameNum = String(i).padStart(3, '0');
+            img.src = 'assets/frames/step' + step.stepNumber + '/frame_' + frameNum + '.jpg';
+            
+            img.onload = () => {
+              if (this.canvas && img.naturalWidth > 0) {
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                if (this.canvas.width !== img.naturalWidth * dpr) {
+                  this.canvas.width = img.naturalWidth * dpr;
+                  this.canvas.height = img.naturalHeight * dpr;
+                }
+              }
+              if (this.currentFrame === (i - 1)) {
+                this.drawFrame(this.currentFrame);
+              }
+            };
+            this.images.push(img);
+          }
+
+          this.currentFrame = Math.min(startFrame, this.totalFrames - 1);
+          setTimeout(() => {
+            if (this.images[this.currentFrame] && this.canvas) {
+              if (this.images[this.currentFrame].complete) {
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                this.canvas.width = (this.images[this.currentFrame].naturalWidth || 800) * dpr;
+                this.canvas.height = (this.images[this.currentFrame].naturalHeight || 500) * dpr;
+                this.drawFrame(this.currentFrame);
+              }
+            }
+            this.play();
+          }, 150);
+        },
+
+        drawFrame(index) {
+          if (!this.canvas || !this.ctx || !this.images[index]) return;
+          this.currentFrame = index;
+          const img = this.images[index];
+          if (img.complete && img.naturalWidth > 0) {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const targetW = (img.naturalWidth || 800) * dpr;
+            const targetH = (img.naturalHeight || 500) * dpr;
+            if (this.canvas.width !== targetW) {
+              this.canvas.width = targetW;
+              this.canvas.height = targetH;
+            }
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+          }
+        },
+
+        startPlayback() {
+          this.stopPlayback();
+          if (!this.isPlaying) return;
+          const delay = Math.max(30, this.baseInterval / this.playbackRate);
+          this.timer = setInterval(() => {
+            let next = this.currentFrame + 1;
+            if (next >= this.totalFrames) {
+              next = 0;
+            }
+            this.drawFrame(next);
+          }, delay);
+        },
+
+        stopPlayback() {
+          if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+          }
+        },
+
+        play() {
+          this.isPlaying = true;
+          this.startPlayback();
+          this.$nextTick(() => lucide.createIcons());
+        },
+
+        pause() {
+          this.isPlaying = false;
+          this.stopPlayback();
+          this.$nextTick(() => lucide.createIcons());
+        },
+
+        togglePlay() {
+          if (this.isPlaying) this.pause();
+          else this.play();
+        },
+
+        restart() {
+          this.currentFrame = 0;
+          this.drawFrame(0);
+          this.play();
+        },
+
+        stepFrame(delta) {
+          this.pause();
+          let next = this.currentFrame + delta;
+          if (next < 0) next = 0;
+          if (next >= this.totalFrames) next = this.totalFrames - 1;
+          this.drawFrame(next);
+        },
+
+        setSpeed(rate) {
+          this.playbackRate = rate;
+          if (this.isPlaying) {
+            this.startPlayback();
+          }
+        },
+
+        onScrub(e) {
+          const frame = parseInt(e.target.value, 10);
+          this.currentFrame = frame;
+          this.drawFrame(frame);
+        },
+
+        get currentNarration() {
+          if (!this.step || !this.step.narrations || this.step.narrations.length === 0) return 'Reproduciendo demostración en pantalla completa...';
+          for (const n of this.step.narrations) {
+            if (this.currentFrame <= n.endFrame) {
+              return n.text;
+            }
+          }
+          return this.step.narrations[this.step.narrations.length - 1].text;
+        },
+
+        formatTimecode(frameIndex) {
+          const totalSeconds = Math.floor((frameIndex * (this.baseInterval / 1000)));
+          const m = Math.floor(totalSeconds / 60);
+          const s = totalSeconds % 60;
+          return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + 's';
+        },
+
+        get currentTimeFormatted() {
+          return this.formatTimecode(this.currentFrame);
+        },
+
+        get totalDurationFormatted() {
+          return this.formatTimecode(this.totalFrames);
+        }
+      }));
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

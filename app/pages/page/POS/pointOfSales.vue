@@ -82,7 +82,19 @@
               variant="tonal"
               density="compact"
             >
-              <strong>Caja cerrada:</strong> abre caja para habilitar cobros.
+              <div class="d-flex align-center justify-space-between flex-grow-1 flex-wrap">
+                <span><strong>Caja cerrada:</strong> abre caja para habilitar cobros.</span>
+                <v-btn
+                  color="warning"
+                  variant="flat"
+                  size="small"
+                  class="ml-sm-4 mt-2 mt-sm-0 font-weight-bold"
+                  @click="cashSessionDialog = true"
+                >
+                  <v-icon start size="small">mdi-lock-open-variant</v-icon>
+                  Abrir Caja
+                </v-btn>
+              </div>
             </v-alert>
 
             <v-btn-toggle
@@ -246,7 +258,7 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog :model-value="cashSessionDialog" max-width="460" persistent>
+    <v-dialog v-model="cashSessionDialog" max-width="460">
       <v-card rounded="xl" elevation="3">
         <v-card-title class="d-flex align-center pa-4 bg-primary text-white">
           <v-icon start>mdi-safe</v-icon>
@@ -300,12 +312,22 @@
           />
         </v-card-text>
 
-        <v-card-actions class="pa-4 pt-0">
+        <v-card-actions class="pa-4 pt-0 d-flex justify-end">
+          <v-spacer />
           <v-btn
-            block
-            color="success"
-            size="large"
+            variant="text"
+            color="grey-darken-1"
             rounded="lg"
+            class="font-weight-bold"
+            @click="cashSessionDialog = false"
+          >
+            Cancelar
+          </v-btn>
+          <v-btn
+            color="success"
+            variant="flat"
+            rounded="lg"
+            class="font-weight-bold"
             :loading="pos.cashSessionLoading"
             @click="openCashSession"
           >
@@ -345,6 +367,7 @@ const paymentMethod = ref('cash')
 const openingSessionCashInput = ref('0')
 const cashSessionChecked = ref(false)
 const cashSessionError = ref('')
+const cashSessionDialog = ref(false)
 
 // Filters
 const search = ref('')
@@ -380,6 +403,19 @@ const products = computed(() => {
   return list
 })
 
+function translateCashSessionError(e: any): string {
+  const errorMsg = e?.message ?? String(e)
+  if (
+    errorMsg.includes('cash_sessions_org_id_fkey') ||
+    errorMsg.includes('profiles_org_id') ||
+    errorMsg.includes('organization_id') ||
+    errorMsg.includes('org_id')
+  ) {
+    return 'Su perfil no está vinculado a una organización activa válida en el sistema. Por favor, contacte a su administrador.'
+  }
+  return errorMsg
+}
+
 onMounted(async () => {
   pos.initFromStorage()
   // Ensure we have auth profile to load products
@@ -388,7 +424,7 @@ onMounted(async () => {
   try {
     await pos.loadCurrentCashSession(pos.selectedCashMode)
   } catch (e: any) {
-    cashSessionError.value = e?.message ?? String(e)
+    cashSessionError.value = translateCashSessionError(e)
   } finally {
     cashSessionChecked.value = true
   }
@@ -401,6 +437,7 @@ function handleAddToCart(product: Product) {
   try {
     if (supabaseDetected.value && !pos.cashSession) {
       toast.info('Abre caja antes de agregar productos.')
+      cashSessionDialog.value = true
       return
     }
     pos.addToCart(product)
@@ -418,7 +455,6 @@ const supabaseDetected = computed(() => {
   const sb = getSupabase()
   return !!sb && typeof sb.from === 'function'
 })
-const cashSessionDialog = computed(() => supabaseDetected.value && cashSessionChecked.value && !pos.cashSession)
 const cashSessionModeLabel = computed(() => {
   if (!pos.cashSession) return pos.selectedCashMode === 'independent' ? 'Caja independiente' : 'Caja general'
   return pos.cashSession.mode === 'independent' ? 'Caja independiente' : 'Caja compartida'
@@ -432,6 +468,7 @@ const procesarCobro = async () => {
 
   if (supabaseDetected.value && !pos.cashSession) {
     toast.info('Abre caja antes de cobrar.')
+    cashSessionDialog.value = true
     return
   }
 
@@ -456,11 +493,12 @@ const procesarCobro = async () => {
     paidWithInput.value = ''
     paymentMethod.value = 'cash'
   } catch (err: any) {
-    console.error(err)
+    const safeMessage = err?.message || 'No fue posible registrar la venta.'
     if (toast) {
-       toast.error('Error al guardar venta: ' + (err?.message || 'Desconocido'))
-    } 
-    alert('ERROR: ' + (err?.message || JSON.stringify(err)))
+       toast.error(safeMessage)
+    } else {
+       alert(safeMessage)
+    }
   }
 };
 
@@ -475,8 +513,9 @@ async function openCashSession() {
   try {
     await pos.openCashSession(openingCash, pos.selectedCashMode)
     toast.success('Caja abierta correctamente')
+    cashSessionDialog.value = false
   } catch (e: any) {
-    cashSessionError.value = e?.message ?? String(e)
+    cashSessionError.value = translateCashSessionError(e)
     toast.error('Error al abrir caja')
   }
 }
@@ -491,7 +530,7 @@ async function selectCashMode(mode: CashSessionMode | null) {
   try {
     await pos.loadCurrentCashSession(mode)
   } catch (e: any) {
-    cashSessionError.value = e?.message ?? String(e)
+    cashSessionError.value = translateCashSessionError(e)
   } finally {
     cashSessionChecked.value = true
   }

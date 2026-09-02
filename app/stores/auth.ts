@@ -260,7 +260,7 @@ export const useAuthStore = defineStore('auth', {
             const { error: rpcError } = await sb.rpc('setup_new_tenant', payload)
 
             if (rpcError) {
-                if (rpcError.message?.includes('ya estÃ¡ en uso')) {
+                if (rpcError.message === 'ACV_TENANT_SLUG_TAKEN' || rpcError.message?.includes('ya está en uso') || rpcError.message?.includes('ya estÃ¡ en uso')) {
                     const uniqueSlug = `${slug}-${Date.now().toString(36).slice(-4)}`
                     const { error: retryError } = await sb.rpc('setup_new_tenant', {
                         ...payload,
@@ -322,7 +322,7 @@ export const useAuthStore = defineStore('auth', {
 
                 if (rpcError) {
                     // Si slug duplicado, reintentar con sufijo único
-                    if (rpcError.message?.includes('ya está en uso')) {
+                    if (rpcError.message === 'ACV_TENANT_SLUG_TAKEN' || rpcError.message?.includes('ya está en uso') || rpcError.message?.includes('ya estÃ¡ en uso')) {
                         const uniqueSlug = `${slug}-${Date.now().toString(36).slice(-4)}`
                         const { error: retryError } = await sb.rpc('setup_new_tenant', {
                             p_church_name: metadata.church_name,

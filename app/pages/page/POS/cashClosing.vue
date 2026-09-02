@@ -150,6 +150,43 @@
         </template>
       </template>
 
+      <!-- Monitoreo y Pre-cierre de Contingencia para Liderazgo/Pastores -->
+      <template v-if="canApprove && openSessions.length > 0">
+        <v-divider class="my-6" />
+        <div class="d-flex align-center mb-2">
+          <v-icon icon="mdi-shield-alert-outline" color="warning" class="mr-2" />
+          <div class="text-h6 font-weight-bold">Cajas Abiertas</div>
+        </div>
+        <div class="text-caption text-medium-emphasis mb-4">
+          Si un cajero (independiente o compartido) perdió conexión o se retiró sin hacer corte, el liderazgo puede pre-cerrar su caja desde aquí.
+        </div>
+
+        <v-row class="mb-4">
+          <v-col v-for="session in openSessions" :key="session.id" cols="12" md="6">
+            <v-card elevation="0" class="pa-4 border bg-blue-grey-lighten-5">
+              <div class="d-flex align-center mb-3">
+                <v-chip size="small" color="primary" variant="flat" class="font-weight-bold">
+                  {{ modeLabel(session.mode) }}
+                </v-chip>
+                <v-spacer />
+                <span class="text-caption text-medium-emphasis">{{ formatDateTime(session.opened_at) }}</span>
+              </div>
+              <div class="d-flex justify-space-between text-body-2 mb-1">
+                <span>Efectivo Inicial</span>
+                <strong>{{ money(session.opening_cash) }}</strong>
+              </div>
+              <div class="d-flex justify-space-between text-body-2 mb-3">
+                <span>Órdenes / Ventas</span>
+                <strong class="text-primary">{{ session.orders_count }} órdenes ({{ money(session.sales_total) }})</strong>
+              </div>
+              <v-btn color="warning" variant="flat" block rounded="lg" prepend-icon="mdi-lock-alert" @click="openContingencyModal(session)">
+                Pre-cerrar (Contingencia)
+              </v-btn>
+            </v-card>
+          </v-col>
+        </v-row>
+      </template>
+
       <template v-if="canApprove && pendingSessions.length > 0">
         <v-divider class="my-6" />
         <div class="text-h6 font-weight-bold mb-4">Cajas Pendientes de Validacion</div>
@@ -233,6 +270,56 @@
         <div class="text-body-2 mt-1">Los cortes aprobados apareceran aqui</div>
       </div>
     </v-card>
+
+    <!-- Dialogo de Contingencia (Liderazgo) -->
+    <v-dialog v-model="contingencyDialog" max-width="500">
+      <v-card class="pa-6" rounded="xl">
+        <div class="d-flex align-center mb-4">
+          <v-icon icon="mdi-lock-alert" color="warning" size="32" class="mr-3" />
+          <div>
+            <div class="text-h6 font-weight-bold">Pre-cierre de Contingencia</div>
+            <div class="text-caption text-medium-emphasis">Toma de control por Liderazgo</div>
+          </div>
+        </div>
+
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          Estás por pre-cerrar y mandar a validación la sesión <strong>{{ modeLabel(contingencySession?.mode) }}</strong> abierta desde <strong>{{ formatDateTime(contingencySession?.opened_at) }}</strong>.
+        </p>
+
+        <v-text-field
+          v-model="contingencyCashCounted"
+          label="Efectivo físico contado en cajón ($)"
+          type="number"
+          variant="outlined"
+          density="comfortable"
+          prepend-inner-icon="mdi-cash"
+          class="mb-4"
+        />
+
+        <v-textarea
+          v-model="contingencyNotes"
+          label="Nota o justificación de contingencia (Obligatorio)"
+          variant="outlined"
+          density="comfortable"
+          rows="2"
+          class="mb-6"
+        />
+
+        <div class="d-flex gap-3">
+          <v-spacer />
+          <v-btn variant="text" @click="contingencyDialog = false">Cancelar</v-btn>
+          <v-btn
+            color="warning"
+            variant="flat"
+            :loading="saving"
+            :disabled="!contingencyNotes.trim()"
+            @click="submitContingencyPreClose"
+          >
+            Confirmar Pre-cierre
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -259,8 +346,14 @@ const historyWarning = ref('')
 
 const currentSession = ref<CashSession | null>(null)
 const pendingSessions = ref<CashSession[]>([])
+const openSessions = ref<CashSession[]>([])
 const historySessions = ref<CashSession[]>([])
 const selectedCashMode = ref<CashSessionMode>('shared')
+
+const contingencyDialog = ref(false)
+const contingencySession = ref<CashSession | null>(null)
+const contingencyCashCounted = ref('0')
+const contingencyNotes = ref('')
 
 const cashCountedInput = ref('0')
 const notes = ref('')
@@ -356,6 +449,7 @@ function goToPos() {
 async function loadAll() {
   await loadCurrentSession()
   await loadPendingSessions()
+  await loadOpenSessions()
 }
 
 async function loadCurrentSession() {
@@ -466,6 +560,70 @@ async function loadPendingSessions() {
   pendingSessions.value = (data ?? []).map(normalizeSession)
 }
 
+async function loadOpenSessions() {
+  openSessions.value = []
+  if (!canApprove.value) return
+
+  const sb = getSupabase()
+  if (!sb?.from) return
+
+  let query = sb
+    .from('cash_sessions')
+    .select('*')
+    .eq('status', 'open')
+    .order('opened_at', { ascending: false })
+
+  if (auth.role === 'leader') {
+    const deptOwnerId = currentDepartmentOwnerId()
+    if (deptOwnerId) query = query.eq('department_owner_id', deptOwnerId)
+  } else if (auth.profile?.org_id && auth.role !== 'super_admin') {
+    query = query.eq('org_id', auth.profile.org_id)
+  }
+
+  const { data, error } = await query.limit(50)
+  if (error) {
+    warning.value = error.message
+    return
+  }
+
+  const allOpen = (data ?? []).map(normalizeSession)
+  openSessions.value = allOpen.filter(s => !currentSession.value || s.id !== currentSession.value.id)
+}
+
+function openContingencyModal(session: CashSession) {
+  contingencySession.value = session
+  contingencyCashCounted.value = String(Number(session.opening_cash || 0) + Number(session.sales_total || 0))
+  contingencyNotes.value = 'Pre-cierre de contingencia por Liderazgo (cajero offline o retirado)'
+  contingencyDialog.value = true
+}
+
+async function submitContingencyPreClose() {
+  const session = contingencySession.value
+  if (!session) return
+
+  const sb = getSupabase()
+  if (!sb?.rpc) return
+
+  saving.value = true
+  try {
+    const { data, error } = await sb.rpc('pre_close_cash_session', {
+      p_session_id: session.id,
+      p_cash_counted: Number(contingencyCashCounted.value || 0),
+      p_notes: contingencyNotes.value.trim() || 'Pre-cierre de contingencia por Liderazgo',
+    })
+    if (error) throw error
+
+    toast.success('Sesión pre-cerrada exitosamente (Contingencia)')
+    contingencyDialog.value = false
+    await loadAll()
+  } catch (e: any) {
+    const msg = e?.message || ''
+    toast.error('Error en contingencia: ' + (msg.startsWith('ACV_') ? 'Operación no permitida.' : (msg || 'Error inesperado.')))
+  } finally {
+    saving.value = false
+  }
+}
+
 async function preCloseCurrentSession() {
   const session = currentSession.value
   if (!session) return
@@ -486,7 +644,8 @@ async function preCloseCurrentSession() {
     toast.success('Caja enviada a validacion')
     await loadAll()
   } catch (e: any) {
-    toast.error('Error: ' + (e?.message ?? String(e)))
+    const msg = e?.message || ''
+    toast.error('Error al pre-cerrar: ' + (msg.startsWith('ACV_') ? 'Operación no permitida.' : (msg || 'Error inesperado.')))
   } finally {
     saving.value = false
   }
@@ -508,7 +667,8 @@ async function approveSession(sessionId: string) {
     await loadAll()
     await loadHistory()
   } catch (e: any) {
-    toast.error('Error: ' + (e?.message ?? String(e)))
+    const msg = e?.message || ''
+    toast.error('Error al aprobar: ' + (msg.startsWith('ACV_') ? 'Operación no permitida.' : (msg || 'Error inesperado.')))
   } finally {
     saving.value = false
   }

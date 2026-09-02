@@ -51,7 +51,7 @@ export async function assertCashSessionConsistency(
 ): Promise<void> {
   let sessionsQuery = sb
     .from('cash_sessions')
-    .select('id, sales_total, total_cash_sales, total_card_sales, total_transfer_sales, orders_count, status, department_owner_id')
+    .select('id, opening_cash, expected_cash, cash_counted, difference, sales_total, total_cash_sales, total_card_sales, total_transfer_sales, orders_count, status, department_owner_id')
     .eq('org_id', orgId)
     .in('status', ['pending_validation', 'closed'])
 
@@ -96,6 +96,17 @@ export async function assertCashSessionConsistency(
     expect(Number(session.total_card_sales), `cash_session ${session.id} card total mismatch`).toBe(cardSales)
     expect(Number(session.total_transfer_sales), `cash_session ${session.id} transfer total mismatch`).toBe(transferSales)
     expect(Number(session.orders_count), `cash_session ${session.id} order count mismatch`).toBe(paidOrders.length)
+
+    if (session.expected_cash !== null && session.expected_cash !== undefined) {
+      expect(Number(session.expected_cash), `cash_session ${session.id} expected_cash mismatch`).toBe(
+        Number(session.opening_cash || 0) + cashSales
+      )
+    }
+    if (session.cash_counted !== null && session.cash_counted !== undefined && session.expected_cash !== null && session.expected_cash !== undefined) {
+      expect(Number(session.difference), `cash_session ${session.id} difference mismatch`).toBe(
+        Number(session.cash_counted) - Number(session.expected_cash)
+      )
+    }
   }
 
   const { data: orphanOrders, error: orphanErr } = await sb
