@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AvivaCheck POS — Fichas Salva-Vidas de Mostrador</title>
+  <style>
+    /* Estilos Base para Pantalla */
+    :root {
+      --primary: #0f172a;
+      --accent: #0284c7;
+      --accent-green: #16a34a;
+      --accent-amber: #d97706;
+      --accent-red: #dc2626;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 1.5rem;
+    }
+
+    /* Barra Superior Flotante */
+    .top-bar {
+      max-width: 900px;
+      margin: 0 auto 1.5rem auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      background: #ffffff;
+      padding: 1rem 1.5rem;
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .top-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 0.5rem;
+      border: 1px solid transparent;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background-color: #0369a1;
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover {
+      background-color: #f1f5f9;
+    }
+
+    .tabs {
+      max-width: 900px;
+      margin: 0 auto 1.5rem auto;
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+    }
+
+    .tab-btn {
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text-muted);
+      border-radius: 0.75rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+    }
+
+    /* Contenedor Principal de Fichas */
+    .sheets-container {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Hoja Individual (Formato Carta) */
+    .sheet {
+      background: var(--card-bg);
+      border: 2px solid #cbd5e1;
+      border-radius: 1.25rem;
+      padding: 2.25rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+      position: relative;
+    }
+
+    .sheet-header {
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .sheet-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 0.4rem;
+      color: #ffffff;
+      margin-bottom: 0.4rem;
+    }
+
+    .badge-cajero { background-color: var(--accent); }
+    .badge-lider { background-color: var(--accent-amber); }
+    .badge-cocina { background-color: #8b5cf6; }
+
+    .sheet-title {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--primary);
+      line-height: 1.2;
+    }
+
+    .sheet-subtitle {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-top: 0.25rem;
+    }
+
+    .church-tag {
+      text-align: right;
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* Pasos de Acción */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .step-card {
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      width: 2.25rem;
+      height: 2.25rem;
+      background: var(--primary);
+      color: #ffffff;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .step-content h4 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 0.35rem;
+    }
+
+    .step-content p {
+      font-size: 0.9rem;
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    .step-content ul {
+      margin-top: 0.4rem;
+      padding-left: 1.2rem;
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+
+    .step-content li {
+      margin-bottom: 0.25rem;
+    }
+
+    .highlight-green {
+      background: #dcfce7;
+      color: #15803d;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 0.25rem;
+    }
+
+    .highlight-amber {
+      background: #fef3c7;
+      color: #b45309;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 0.25rem;
+    }
+
+    /* Recuadro de Paz Mental / Emergencia */
+    .peace-box {
+      border: 2px dashed #cbd5e1;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      background: #ffffff;
+      margin-bottom: 1.25rem;
+    }
+
+    .peace-box.emergency {
+      border-color: #fca5a5;
+      background: #fff5f5;
+    }
+
+    .peace-box.rule {
+      border-color: #93c5fd;
+      background: #f0f9ff;
+    }
+
+    .peace-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .peace-box.emergency .peace-title { color: var(--accent-red); }
+    .peace-box.rule .peace-title { color: var(--accent); }
+
+    .peace-desc {
+      font-size: 0.85rem;
+      line-height: 1.45;
+      color: var(--text);
+    }
+
+    .sheet-footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* REGLAS ESTRICTAS DE IMPRESIÓN (@media print) */
+    @media print {
+      body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        color: #000000 !important;
+      }
+
+      .top-bar, .tabs {
+        display: none !important;
+      }
+
+      .sheets-container {
+        max-width: 100% !important;
+        gap: 0 !important;
+      }
+
+      .sheet {
+        border: 1px solid #000000 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        padding: 1.5cm !important;
+        margin: 0 !important;
+        width: 100% !important;
+        min-height: 100vh !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        display: block !important;
+      }
+
+      .sheet:last-child {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+
+      .step-card {
+        border: 1px solid #000000 !important;
+        background: #ffffff !important;
+      }
+
+      .step-num {
+        background: #000000 !important;
+        color: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .sheet-badge {
+        border: 1px solid #000000 !important;
+        color: #000000 !important;
+        background: transparent !important;
+      }
+
+      .peace-box {
+        border: 1px solid #000000 !important;
+        background: #ffffff !important;
+      }
+
+      .highlight-green, .highlight-amber {
+        background: transparent !important;
+        font-weight: 900 !important;
+        text-decoration: underline !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BARRA DE CONTROL EN PANTALLA -->
+  <header class="top-bar">
+    <div class="top-title">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Fichas Salva-Vidas de Mostrador
+    </div>
+    <div class="btn-group">
+      <a href="index.html" class="btn btn-outline">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Volver al Manual
+      </a>
+      <button class="btn btn-primary" onclick="window.print()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir Fichas (Ctrl + P)
+      </button>
+    </div>
+  </header>
+
+  <!-- SELECTOR POR ROLES EN PANTALLA -->
+  <nav class="tabs">
+    <button class="tab-btn active" onclick="showTab('all', this)">📄 Ver las 3 Fichas (Para Imprimir)</button>
+    <button class="tab-btn" onclick="showTab('cajero', this)">☕ Ficha 1: Cajero de Mostrador</button>
+    <button class="tab-btn" onclick="showTab('lider', this)">🛡️ Ficha 2: Líder y Auditoría</button>
+    <button class="tab-btn" onclick="showTab('cocina', this)">🍳 Ficha 3: Cocina y Despacho</button>
+  </nav>
+
+  <main class="sheets-container">
+
+    <!-- =================================================================== -->
+    <!-- FICHA 1: CAJERO DE MOSTRADOR -->
+    <!-- =================================================================== -->
+    <article class="sheet sheet-cajero" id="sheet-cajero">
+      <div class="sheet-header">
+        <div>
+          <span class="sheet-badge badge-cajero">Ficha 1 — Cafetería / Librería / Comedor</span>
+          <h1 class="sheet-title">Guía Rápida de Mostrador: Cajero</h1>
+          <p class="sheet-subtitle">Los 3 pasos exactos para operar tu turno con total tranquilidad</p>
+        </div>
+        <div class="church-tag">
+          AvivaCheck POS<br>
+          <span style="font-size: 0.7rem; font-weight: 500;">Uso en Mostrador</span>
+        </div>
+      </div>
+
+      <div class="steps-grid">
+        <!-- Paso 1 -->
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>Al Iniciar el Servicio: Abre tu Caja</h4>
+            <p>Enciende la tablet o computadora y toca el botón azul <strong>"Abrir Caja"</strong>.</p>
+            <ul>
+              <li>Escribe en el campo de texto la cantidad de dinero físico que te entregaron para cambio (ej. <strong>$50.00</strong> o <strong>$100.00</strong>).</li>
+              <li>Presiona <strong>"Abrir Caja"</strong>. El sistema mostrará la alerta verde <em>"Caja abierta"</em>. ¡Listo para atender!</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Paso 2 -->
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>Al Cobrar: El Sistema Calcula el Cambio por Ti</h4>
+            <p>Toca los productos que el hermano te pida y presiona el botón <strong>"COBRAR"</strong>.</p>
+            <ul>
+              <li>Selecciona <strong>"Efectivo"</strong> y escribe con cuánto billete te están pagando (ej. <strong>$100</strong>).</li>
+              <li>La pantalla te mostrará en número grande y color verde el <span class="highlight-green">CAMBIO EXACTO</span> que debes entregar.</li>
+              <li>Entrega el cambio, presiona <strong>"Finalizar"</strong> y entrega su ticket o producto al hermano.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Paso 3 -->
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Al Terminar el Servicio: Corte de Caja Ciego</h4>
+            <p>Ve a la opción <strong>"Corte de Caja"</strong> en el menú lateral izquierdo.</p>
+            <ul>
+              <li>Cuenta en privado todos los billetes y monedas que tienes dentro del cajón físico.</li>
+              <li>Escribe la suma total exacta en la casilla <strong>"Efectivo contado"</strong>.</li>
+              <li>Presiona <strong>"Pre-cerrar Caja"</strong>. En seguida llama a tu líder para que revise y autorice el corte contigo.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recuadro Salva-Vidas de Emergencia -->
+      <div class="peace-box emergency">
+        <div class="peace-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          ¿Tuviste una urgencia familiar o te sientes mal y debes retirarte de inmediato?
+        </div>
+        <p class="peace-desc">
+          <strong>Vete con total paz mental, tu familia y tu salud son primero.</strong> No te preocupes por hacer cuentas apresuradas ni cierres la aplicación a la fuerza. Deja la pantalla tal como está y avisa a tu líder. Tu líder cuenta con un procedimiento oficial de <em>Contingencia</em> para contar el dinero en presencia de un testigo y registrar el motivo de tu salida. Tu honradez y tu servicio quedan 100% protegidos ante Dios y la congregación.
+        </p>
+      </div>
+
+      <div class="sheet-footer">
+        <span>💡 Regla de Oro: El fondo inicial nunca se suma como venta; se reintegra íntegro.</span>
+        <span>AvivaCheck POS — Ficha Plastificable de Mostrador</span>
+      </div>
+    </article>
+
+
+    <!-- =================================================================== -->
+    <!-- FICHA 2: LÍDER DE DEPARTAMENTO Y AUDITORÍA -->
+    <!-- =================================================================== -->
+    <article class="sheet sheet-lider" id="sheet-lider">
+      <div class="sheet-header">
+        <div>
+          <span class="sheet-badge badge-lider">Ficha 2 — Supervisión y Tesorería</span>
+          <h1 class="sheet-title">Guía de Liderazgo: Auditoría y Rescate</h1>
+          <p class="sheet-subtitle">Validación fraterna de cortes y resolución de contingencias en el templo</p>
+        </div>
+        <div class="church-tag">
+          AvivaCheck POS<br>
+          <span style="font-size: 0.7rem; font-weight: 500;">Uso de Liderazgo</span>
+        </div>
+      </div>
+
+      <div class="steps-grid">
+        <!-- Paso 1 -->
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>Cierre Ordinario: La Regla Bíblica de Dos Testigos</h4>
+            <p>Cuando el cajero te notifique que ya pre-cerró, ingresa a <strong>"Corte de Caja"</strong> con tu cuenta de líder.</p>
+            <ul>
+              <li>En la sección <strong>"Cajas Pendientes de Validación"</strong> verás la tarjeta del cajero.</li>
+              <li>Comprueba que la diferencia marque <span class="highlight-green">Diferencia $0.00 en verde</span>.</li>
+              <li>Presiona <strong>"Aprobar cierre"</strong>. La sesión pasa a <em>Cerrada</em> y se emite el comprobante para entregar a Tesorería.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Paso 2 -->
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>¿Qué hacer si sobran o faltan algunos pesos?</h4>
+            <p><strong>El sistema registra la realidad sin acusaciones.</strong></p>
+            <ul>
+              <li>Si al cajero le faltan $10 o le sobran $20, la pantalla mostrará la diferencia en rojo o amarillo.</li>
+              <li>El sistema <strong>NO bloquea la caja</strong>. Permite aprobar el corte para no entorpecer la entrega de cuentas.</li>
+              <li>Revisen juntos si hubo algún cambio mal dado. Aprueben el corte con sinceridad y transparencia.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Paso 3 -->
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Rescate de Caja Huérfana por Contingencia</h4>
+            <p>Si un cajero tuvo que salir intempestivamente y dejó su caja abierta:</p>
+            <ul>
+              <li>Ve a <strong>"Corte de Caja"</strong> $\rightarrow$ sección <strong>"Cajas Abiertas"</strong> y ubica la caja del voluntario.</li>
+              <li>Presiona el botón amarillo <strong>"Pre-cerrar (Contingencia)"</strong>.</li>
+              <li>Llama a un hermano como testigo presencial y cuenten juntos el efectivo físico del cajón.</li>
+              <li>Escribe la cantidad contada y <strong>escribe la justificación obligatoria</strong> (ej. <em>"Rescate de turno: cajero se retiró por urgencia familiar"</em>).</li>
+              <li>Confirma el pre-cierre y luego presiona <strong>"Aprobar cierre"</strong>. La terminal queda libre de inmediato.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recuadro Salva-Vidas de Regla de Oro -->
+      <div class="peace-box rule">
+        <div class="peace-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Blindaje de Personal: Cero Cambios con Dinero en Movimiento
+        </div>
+        <p class="peace-desc">
+          El sistema protege al equipo impidiendo que se cambie el rol de un voluntario (ej. mover de caja a cocina) o se altere su modalidad mientras tenga una caja <em>Abierta</em> o <em>Pendiente de Validación</em>. Siempre se debe aprobar el corte antes de modificar los permisos de un hermano en la sección de Usuarios.
+        </p>
+      </div>
+
+      <div class="sheet-footer">
+        <span>🛡️ Principio: Transparencia ministerial mutua entre voluntario y liderazgo.</span>
+        <span>AvivaCheck POS — Ficha Plastificable de Mostrador</span>
+      </div>
+    </article>
+
+
+    <!-- =================================================================== -->
+    <!-- FICHA 3: COCINA Y PANTALLA KDS -->
+    <!-- =================================================================== -->
+    <article class="sheet sheet-cocina" id="sheet-cocina">
+      <div class="sheet-header">
+        <div>
+          <span class="sheet-badge badge-cocina">Ficha 3 — Preparación y Despacho</span>
+          <h1 class="sheet-title">Guía de Cocina: Pantalla KDS en Vivo</h1>
+          <p class="sheet-subtitle">Coordinación en tiempo real para servir alimentos sin confusiones</p>
+        </div>
+        <div class="church-tag">
+          AvivaCheck POS<br>
+          <span style="font-size: 0.7rem; font-weight: 500;">Pantalla de Cocina</span>
+        </div>
+      </div>
+
+      <div class="steps-grid">
+        <!-- Paso 1 -->
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>La Regla de Oro: Todo lo que ves ya está cobrado</h4>
+            <p>Cada comanda que aparece en tu pantalla representa una orden <span class="highlight-green">100% PAGADA EN CAJA</span>.</p>
+            <ul>
+              <li><strong>Nunca cocines nada de palabra:</strong> Si un hermano pide comida directamente en la barra de cocina, pídele amablemente que pase primero a la caja.</li>
+              <li>En cuanto el cajero presiona <em>Finalizar</em>, la orden suena y aparece en tu pantalla en menos de 1 segundo.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Paso 2 -->
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>Orden de Preparación: Primero en entrar, primero en salir</h4>
+            <p>Las tarjetas se ordenan automáticamente por hora de llegada para evitar que nadie espere de más.</p>
+            <ul>
+              <li>Cada tarjeta muestra el número de orden (ej. <strong>#34</strong>), la hora exacta y la lista de platillos con su cantidad.</li>
+              <li>Si un pedido lleva varios minutos sin despacharse, la tarjeta cambiará de color para avisarte que es prioritario.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Paso 3 -->
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Al Servir el Platillo: Presiona "ENTREGAR"</h4>
+            <p>Cuando el platillo esté listo y se entregue en la charola o en mano del hermano:</p>
+            <ul>
+              <li>Toca el botón verde grande <strong>"ENTREGAR"</strong> en la parte inferior de la comanda.</li>
+              <li>La comanda desaparecerá de la lista de pendientes y pasará a la pestaña de <em>Entregados</em>.</li>
+              <li>¡Tu pantalla se mantiene limpia y ordenada para el siguiente platillo!</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recuadro de Paz Mental de Cocina -->
+      <div class="peace-box rule">
+        <div class="peace-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          ¿Por qué los libros y Biblias de la Librería nunca aparecen en tu pantalla?
+        </div>
+        <p class="peace-desc">
+          Porque la Librería tiene activada la <strong>Auto-Entrega</strong>. Los artículos que no necesitan estufa ni preparación se entregan directamente en mostrador al cobrar, para que tu equipo de cocina solo vea órdenes de alimentos y bebidas reales sin distracciones.
+        </p>
+      </div>
+
+      <div class="sheet-footer">
+        <span>🍳 Si la pantalla dice "Sin comandas pendientes", ¡gloria a Dios, vas al día!</span>
+        <span>AvivaCheck POS — Ficha Plastificable de Cocina</span>
+      </div>
+    </article>
+
+  </main>
+
+  <script>
+    function showTab(type, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const cajero = document.getElementById('sheet-cajero');
+      const lider = document.getElementById('sheet-lider');
+      const cocina = document.getElementById('sheet-cocina');
+
+      if (type === 'all') {
+        cajero.style.display = 'block';
+        lider.style.display = 'block';
+        cocina.style.display = 'block';
+      } else if (type === 'cajero') {
+        cajero.style.display = 'block';
+        lider.style.display = 'none';
+        cocina.style.display = 'none';
+      } else if (type === 'lider') {
+        cajero.style.display = 'none';
+        lider.style.display = 'block';
+        cocina.style.display = 'none';
+      } else if (type === 'cocina') {
+        cajero.style.display = 'none';
+        lider.style.display = 'none';
+        cocina.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -134,24 +134,107 @@
         </div>
       </div>
 
-      <!-- SEARCH BAR -->
+      <!-- SEARCH BAR & OMNIBOX UNIFICADO -->
       <div class="relative flex-1 max-w-md mx-2">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
           <i data-lucide="search" class="w-4 h-4 text-brand-400"></i>
         </div>
         <input type="text" 
                x-model.debounce.150ms="searchQuery"
-               placeholder="¿Qué necesitas hacer hoy? (ej. cobrar, abrir caja, corte...)" 
+               placeholder="¿Qué necesitas hacer hoy? (ej. fondo, corte, cambio, urgencia...)" 
                class="w-full pl-9 pr-8 py-1.5 bg-slate-900/90 text-xs sm:text-sm text-slate-200 placeholder-slate-400 rounded-xl border border-darkborder focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 transition-all">
         <button x-show="searchQuery" 
                 @click="searchQuery = ''"
-                class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-white">
+                class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-white"
+                title="Limpiar búsqueda (Esc)">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
+
+        <!-- OMNIBOX DROPDOWN (RESULTADOS EN TIEMPO REAL) -->
+        <div x-show="searchQuery.trim().length > 0" 
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+             x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+             @click.away="searchQuery = ''"
+             class="absolute left-0 right-0 top-full mt-2 bg-slate-900/98 backdrop-blur-xl border border-darkborder rounded-2xl shadow-2xl overflow-hidden z-50 max-h-[75vh] flex flex-col custom-scrollbar">
+          
+          <div class="p-3 border-b border-slate-800 flex items-center justify-between text-xs bg-slate-950/70">
+            <span class="text-slate-400 font-medium">
+              Resultados para "<strong class="text-white" x-text="searchQuery"></strong>"
+            </span>
+            <span class="text-[10px] text-slate-500 font-mono">ESC para cerrar</span>
+          </div>
+
+          <div class="overflow-y-auto custom-scrollbar divide-y divide-slate-800/60 p-2 space-y-2">
+            <!-- SECCIÓN 1: PASOS EN VIDEO COINCIDENTES -->
+            <div x-show="filteredSteps.length > 0">
+              <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-400 flex items-center space-x-1.5">
+                <i data-lucide="video" class="w-3.5 h-3.5"></i>
+                <span>Pasos en Video Coincidentes (<span x-text="filteredSteps.length"></span>)</span>
+              </div>
+              <div class="space-y-1 mt-1">
+                <template x-for="step in filteredSteps" :key="'omni-step-' + step.id">
+                  <button @click="openTheater(step, 0); searchQuery = ''"
+                          class="w-full text-left p-2 rounded-xl hover:bg-slate-800/80 transition flex items-center justify-between group">
+                    <div class="flex items-center space-x-2.5 min-w-0">
+                      <span class="w-6 h-6 rounded-lg bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center justify-center text-xs font-bold font-mono shrink-0" x-text="step.stepNumber"></span>
+                      <div class="min-w-0">
+                        <p class="text-xs font-semibold text-slate-200 group-hover:text-white truncate" x-text="step.title"></p>
+                        <p class="text-[10px] text-slate-400 truncate" x-text="step.scope + ' • ' + step.location"></p>
+                      </div>
+                    </div>
+                    <i data-lucide="play-circle" class="w-4 h-4 text-slate-500 group-hover:text-accent-400 shrink-0 ml-2"></i>
+                  </button>
+                </template>
+              </div>
+            </div>
+
+            <!-- SECCIÓN 2: PREGUNTAS FRECUENTES Y PAZ MENTAL COINCIDENTES -->
+            <div x-show="filteredFaqs.length > 0" class="pt-2">
+              <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-amber flex items-center space-x-1.5">
+                <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+                <span>Preguntas de Seguridad y Dudas (<span x-text="filteredFaqs.length"></span>)</span>
+              </div>
+              <div class="space-y-1 mt-1">
+                <template x-for="faq in filteredFaqs" :key="'omni-faq-' + faq.id">
+                  <div class="p-2 rounded-xl hover:bg-slate-800/80 transition text-left space-y-1 group">
+                    <button @click="openedFaqId = faq.id; scrollToElement('faq-section'); searchQuery = ''"
+                            class="w-full text-left">
+                      <p class="text-xs font-semibold text-slate-200 group-hover:text-amber-300" x-text="faq.question"></p>
+                      <p class="text-[10px] text-slate-400 line-clamp-2 mt-0.5" x-text="faq.shortAnswer"></p>
+                    </button>
+                    <div x-show="faq.videoRef" class="pt-1 flex items-center justify-between">
+                      <span class="text-[10px] text-brand-400 font-mono" x-text="faq.videoRef.timestampText"></span>
+                      <button @click="openTheaterForStep(faq.videoRef.stepNumber, faq.videoRef.frame); searchQuery = ''"
+                              class="px-2 py-0.5 rounded-md bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/40 text-[10px] font-semibold flex items-center space-x-1 transition">
+                        <i data-lucide="play" class="w-3 h-3"></i>
+                        <span>Ver video</span>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- SIN RESULTADOS -->
+            <div x-show="filteredSteps.length === 0 && filteredFaqs.length === 0" class="p-6 text-center text-xs text-slate-400 space-y-1">
+              <p class="font-medium text-slate-300">No encontramos coincidencias para tu búsqueda.</p>
+              <p class="text-[11px] text-slate-500">Prueba con palabras como: <em>fondo, corte, emergencia, cambio, librería, cocina</em></p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ACCIONES DIRECTAS -->
       <div class="flex items-center space-x-2.5 shrink-0">
+        <a href="fichas.html" target="_blank" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold transition flex items-center space-x-1.5 shadow-sm">
+          <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Fichas Salva-Vidas</span>
+          <span class="sm:hidden">Fichas</span>
+        </a>
         <button @click="toggleGlobalPlayback()" 
                 class="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-darkborder transition flex items-center space-x-1.5 shadow-sm">
           <i :data-lucide="allPlaying ? 'pause' : 'play'" class="w-3.5 h-3.5 text-accent-500"></i>
@@ -258,6 +341,35 @@
             <span class="text-xs text-slate-400">Nivel de Acceso:</span>
             <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 text-xs font-semibold border border-darkborder mt-1" x-text="getCurrentRole().hierarchy"></span>
           </div>
+        </div>
+
+        <!-- QUICK-SEARCH CHIPS (ACCESO DIRECTO A CASOS REALES DE DOMINGO) -->
+        <div class="relative z-10 mt-4 pt-3.5 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
+          <span class="text-[11px] font-semibold text-slate-400 flex items-center space-x-1">
+            <i data-lucide="zap" class="w-3.5 h-3.5 text-accent-amber"></i>
+            <span>Dudas Frecuentes de Domingo:</span>
+          </span>
+          <button @click="searchQuery = 'fondo'" 
+                  class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700/80 hover:border-brand-500/50 transition flex items-center space-x-1 shadow-sm">
+            <span>💵 Fondo Inicial</span>
+          </button>
+          <button @click="searchQuery = 'urgencia'" 
+                  class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700/80 hover:border-brand-500/50 transition flex items-center space-x-1 shadow-sm">
+            <span>🚨 Tuve una Urgencia</span>
+          </button>
+          <button @click="searchQuery = 'cambio'" 
+                  class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700/80 hover:border-brand-500/50 transition flex items-center space-x-1 shadow-sm">
+            <span>☕ Error de Cobro / Cambio</span>
+          </button>
+          <button @click="searchQuery = 'dos testigos'" 
+                  class="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700/80 hover:border-brand-500/50 transition flex items-center space-x-1 shadow-sm">
+            <span>🔒 Dos Testigos en el Corte</span>
+          </button>
+          <a href="fichas.html" target="_blank"
+             class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold border border-amber-500/40 transition flex items-center space-x-1.5 shadow-sm ml-auto">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+            <span>Imprimir Fichas Salva-Vidas (1 Pág.)</span>
+          </a>
         </div>
       </section>
 
@@ -507,28 +619,63 @@
       </section>
 
       <!-- FREQUENT ISSUES: PREGUNTAS DE ORO Y PAZ MENTAL -->
-      <section class="bg-darkcard border border-darkborder rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+      <section id="faq-section" class="bg-darkcard border border-darkborder rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-2.5">
             <div class="p-2 rounded-xl bg-accent-amber/10 border border-accent-amber/20 text-accent-amber">
               <i data-lucide="help-circle" class="w-5 h-5"></i>
             </div>
             <div>
-              <h3 class="text-base font-bold text-white">Preguntas Frecuentes, Seguridad y Paz Mental</h3>
-              <p class="text-xs text-slate-400">Respuestas claras a situaciones reales durante el servicio en la iglesia</p>
+              <h3 class="text-base font-bold text-white">10 Preguntas Canónicas, Seguridad y Paz Mental</h3>
+              <p class="text-xs text-slate-400">Respuestas certificadas contra el código fuente real de PostgreSQL y Pinia para el voluntario de domingo</p>
             </div>
           </div>
+          <span class="text-xs font-mono text-slate-400 hidden sm:inline">10 Preguntas Blindadas</span>
         </div>
 
-        <div class="space-y-2.5 pt-2">
-          <template x-for="(faq, fIndex) in faqs" :key="fIndex">
-            <div class="border border-slate-800 rounded-xl overflow-hidden transition">
-              <button @click="faq.open = !faq.open" class="w-full p-3.5 bg-slate-900/70 hover:bg-slate-900 flex items-center justify-between text-left text-xs sm:text-sm font-semibold text-slate-200 transition">
-                <span x-text="faq.question"></span>
-                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="faq.open ? 'rotate-180 text-brand-400' : ''"></i>
+        <div class="space-y-3 pt-2">
+          <template x-for="(faq, fIndex) in filteredFaqs" :key="faq.id">
+            <div class="border border-slate-800 rounded-xl overflow-hidden transition bg-slate-900/40 hover:border-slate-700">
+              <button @click="toggleFaq(faq.id)" class="w-full p-3.5 bg-slate-900/70 hover:bg-slate-900 flex items-center justify-between text-left text-xs sm:text-sm font-semibold text-slate-200 transition">
+                <div class="flex items-center space-x-2.5 pr-3">
+                  <span class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xs font-bold font-mono shrink-0" x-text="faq.id"></span>
+                  <span x-text="faq.question" class="text-slate-100"></span>
+                </div>
+                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200" :class="openedFaqId === faq.id ? 'rotate-180 text-brand-400' : ''"></i>
               </button>
-              <div x-show="faq.open" class="p-4 bg-slate-950 text-xs text-slate-300 leading-relaxed border-t border-slate-800 space-y-2">
-                <p x-html="faq.answer"></p>
+              <div x-show="openedFaqId === faq.id" class="p-4 bg-slate-950 text-xs text-slate-300 leading-relaxed border-t border-slate-800 space-y-3">
+                
+                <!-- RESPUESTA PASTORAL / HUMANA -->
+                <div class="space-y-1">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center space-x-1">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    <span>Tranquilidad y Paz Mental:</span>
+                  </span>
+                  <p class="text-slate-200 text-xs sm:text-sm leading-relaxed" x-html="faq.answer"></p>
+                </div>
+
+                <!-- BLINDAJE TÉCNICO EN CÓDIGO (ZERO-TRUST & POSTGRESQL) -->
+                <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800/80 text-[11px] text-slate-300 space-y-1">
+                  <span class="font-bold text-slate-400 flex items-center space-x-1">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-accent-500"></i>
+                    <span>Blindaje en Código Fuente:</span>
+                  </span>
+                  <p class="font-mono text-slate-400 text-[10px] leading-relaxed" x-text="faq.codeProof"></p>
+                </div>
+
+                <!-- BOTÓN DEEP-LINKING AL MOMENTO EXACTO EN VIDEO -->
+                <div x-show="faq.videoRef" class="pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60">
+                  <span class="text-[11px] text-slate-400 flex items-center space-x-1">
+                    <i data-lucide="video" class="w-3.5 h-3.5 text-brand-400"></i>
+                    <span x-text="'Momento certificado: ' + faq.videoRef.timestampText"></span>
+                  </span>
+                  <button @click="openTheaterForStep(faq.videoRef.stepNumber, faq.videoRef.frame)" 
+                          class="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs shadow-md shadow-brand-600/30 transition flex items-center space-x-1.5">
+                    <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                    <span>Ver cómo se hace en el video</span>
+                  </button>
+                </div>
+
               </div>
             </div>
           </template>
@@ -598,10 +745,35 @@
           </div>
         </div>
 
-        <!-- NARRACIÓN EN VIVO EN TEATRO -->
-        <div class="w-full max-w-4xl mt-3 p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-brand-200 flex items-center space-x-2">
-          <i data-lucide="message-square" class="w-4 h-4 text-brand-400 shrink-0"></i>
-          <p class="text-xs text-slate-200 font-medium" x-text="currentNarration"></p>
+        <!-- NARRACIÓN Y SUBTÍTULOS EN VIVO EN TEATRO -->
+        <div class="w-full max-w-4xl mt-3 p-3.5 rounded-xl bg-slate-900/95 border border-brand-500/30 text-xs shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-start space-x-3">
+            <div class="p-2 rounded-lg bg-brand-500/20 text-brand-400 shrink-0 mt-0.5">
+              <i data-lucide="subtitles" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-brand-950 text-brand-300 border border-brand-500/40 font-mono"
+                      x-text="currentChapter ? currentChapter.timestamp + ' • ' + currentChapter.title : 'Capítulo'"></span>
+              </div>
+              <p class="text-xs sm:text-sm text-white font-medium mt-1 leading-snug" x-text="currentNarration"></p>
+            </div>
+          </div>
+          <div class="shrink-0 flex items-center space-x-2 text-[11px] text-slate-400 self-end sm:self-center">
+            <span class="px-2 py-1 rounded bg-slate-800 text-slate-300 font-mono" x-text="currentTimeFormatted"></span>
+          </div>
+        </div>
+
+        <!-- CAPÍTULOS CLICABLES DENTRO DEL TEATRO -->
+        <div class="w-full max-w-4xl mt-2 flex flex-wrap gap-2" x-show="step && step.chapters">
+          <template x-for="(ch, idx) in (step ? step.chapters : [])" :key="idx">
+            <button @click="jumpToChapter(ch.frame)"
+                    :class="currentFrame >= ch.frame && currentFrame <= ch.endFrame ? 'bg-brand-600 text-white font-bold ring-1 ring-white/30 shadow-md' : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300'"
+                    class="px-2.5 py-1 rounded-lg text-[11px] transition flex items-center space-x-1.5 shadow-sm">
+              <span class="font-mono text-[10px]" x-text="ch.timestamp"></span>
+              <span x-text="ch.title"></span>
+            </button>
+          </template>
         </div>
       </div>
 
@@ -698,7 +870,28 @@
         searchQuery: '',
         activeRole: 'all',
         allPlaying: true,
+        openedFaqId: null,
         theaterModal: { open: false, step: null, startFrame: 0, speed: 1.0 },
+
+        toggleFaq(id) {
+          this.openedFaqId = (this.openedFaqId === id) ? null : id;
+          this.$nextTick(() => {
+            if (window.lucide) lucide.createIcons();
+          });
+        },
+
+        init() {
+          this.$watch('searchQuery', () => {
+            this.$nextTick(() => {
+              if (window.lucide) lucide.createIcons();
+            });
+          });
+          this.$watch('activeRole', () => {
+            this.$nextTick(() => {
+              if (window.lucide) lucide.createIcons();
+            });
+          });
+        },
 
         roles: [
           { 
@@ -868,7 +1061,7 @@
               { endFrame: 95, text: '💵 2. Aparece la ventana de apertura pidiendo el dinero para dar cambio.' },
               { endFrame: 160, text: '🔓 3. Digita el monto del fondo (ej. $200.00) y el mostrador queda listo para cobrar.' }
             ],
-            tags: ['apertura', 'fondo', 'caja', 'cajero']
+            tags: ['apertura', 'fondo', 'caja', 'cajero', 'fondo inicial', 'cambio', 'billetes']
           },
           {
             id: 5,
@@ -897,7 +1090,7 @@
               { endFrame: 100, text: '💵 2. Presiona "Cobrar", escribe el dinero recibido y la pantalla muestra el cambio exacto.' },
               { endFrame: 160, text: '🧾 3. Se confirma la venta, se genera el ticket con su número y la comanda viaja a cocina.' }
             ],
-            tags: ['checkout', 'pos', 'cobro', 'cambio']
+            tags: ['checkout', 'pos', 'cobro', 'cambio', 'ticket', 'efectivo', 'error']
           },
           {
             id: 6,
@@ -984,7 +1177,7 @@
               { endFrame: 100, text: '💵 2. Cuenta los billetes y monedas que tiene en el cajón y escribe el monto contado.' },
               { endFrame: 160, text: '🔒 3. Presiona "Cerrar Turno" y se emite el comprobante de corte final para tesorería.' }
             ],
-            tags: ['cierre', 'corte', 'arqueo', 'cajero']
+            tags: ['cierre', 'corte', 'arqueo', 'cajero', 'dos testigos', 'conteo ciego', 'sobrante', 'faltante', 'diferencia']
           },
           {
             id: 9,
@@ -1013,47 +1206,117 @@
               { endFrame: 95, text: '🛡️ 2. Presiona "Pre-cerrar Caja (Contingencia)" y digita el dinero contado en mostrador.' },
               { endFrame: 160, text: '✅ 3. Agrega la nota explicativa y la caja queda asegurada sin perder un solo centavo.' }
             ],
-            tags: ['contingencia', 'pre-cierre', 'rescate', 'lider']
+            tags: ['contingencia', 'pre-cierre', 'rescate', 'lider', 'urgencia', 'emergencia', 'salida', 'caja compartida']
           }
         ],
 
         faqs: [
           {
-            question: "¿Qué pasa si se corta la luz o el internet en pleno cobro de un pedido?",
-            answer: "<strong>Tu dinero y tus ventas están 100% seguros.</strong> El sistema guarda cada venta en el mismo instante en que se confirma el pago. Si se corta la energía o la conexión a internet a mitad del proceso, la venta no se cobra a medias ni se generan órdenes duplicadas; al volver la luz, tu caja sigue exactamente intacta y el dinero cuadrado.",
+            id: 1,
+            question: "¿Qué pasa si el cliente me da menos dinero del total de la orden?",
+            shortAnswer: "El sistema evalúa el monto recibido y rechaza el cobro con 'Monto insuficiente', impidiendo deudas o cobros incompletos.",
+            answer: "<strong>Tu caja y tu conteo están protegidos al 100%.</strong> La pantalla de cobro evalúa el dinero entregado por el hermano al instante. Si la cantidad recibida es inferior al valor de la orden, el sistema no permite avanzar, desactiva el botón y muestra un aviso amable indicando el faltante para que el cliente complete el pago con calma.",
+            codeProof: "app/stores/pos.ts → checkout(): if (paidWith.value < cartTotal.value) { error = 'Monto insuficiente'; return; } — Bloqueo estricto del lado del cliente antes de contactar a la base de datos.",
+            keywords: ["insuficiente", "falta dinero", "cambio", "cobro", "error", "monto", "pago"],
+            videoRef: { stepNumber: 5, frame: 50, timestampText: "⏱️ 0:11 (Paso 5 Cobro en Efectivo)" },
             open: false
           },
           {
+            id: 2,
             question: "¿Puede un voluntario o cajero cambiar el precio de un producto para cobrar de más o de menos?",
-            answer: "<strong>Es totalmente imposible.</strong> En la pantalla de cobro del mostrador los precios están blindados: el cajero solo toca la foto del producto y el sistema aplica el precio oficial configurado por el Líder o Pastor. Ningún cajero puede editar precios al cobrar.",
+            shortAnswer: "Es imposible: la arquitectura Zero-Trust obtiene los precios autorizados directamente de PostgreSQL.",
+            answer: "<strong>Cero alteraciones: transparencia garantizada.</strong> En el mostrador el cajero únicamente pulsa la foto del producto; no existe ningún campo editable de precio. Toda la matemática de cobro se resuelve en el servidor de base de datos bajo los precios oficiales aprobados por el Pastor o Líder.",
+            codeProof: "PostgreSQL RPC process_checkout: SELECT price FROM products WHERE id = item.product_id AND org_id = user.org_id AND active = true. Los precios enviados por el frontend se descartan por completo.",
+            keywords: ["precio", "descuento", "modificar", "alterar", "cajero", "seguridad", "cambiar precio"],
+            videoRef: { stepNumber: 3, frame: 5, timestampText: "⏱️ 0:02 (Paso 3 Catálogo y Precios)" },
             open: false
           },
           {
-            question: "¿El Pastor o Tesorero pueden ver las ventas en tiempo real desde su teléfono celular?",
-            answer: "<strong>Sí, en cualquier momento y desde cualquier lugar.</strong> El pastor o administrador solo ingresa a la aplicación web desde su celular con su cuenta y podrá ver las ventas minuto a minuto, los productos más vendidos y el saldo de cada caja sin necesidad de estar físicamente en el mostrador.",
+            id: 3,
+            question: "¿El dinero del fondo inicial (ej. $100) cuenta como venta del día?",
+            shortAnswer: "No: el fondo inicial se guarda de forma inmutable y se aísla automáticamente en el cálculo de ventas netas.",
+            answer: "<strong>Tu fondo no se mezcla jamás con las ventas.</strong> Al abrir tu turno registras el efectivo con el que inicias para dar cambio. Al finalizar el día, el sistema resta ese fondo exacto para que el reporte financiero refleje únicamente la ganancia real sin inflar los números.",
+            codeProof: "cash_sessions.opening_cash persiste el fondo inicial. El RPC de arqueo calcula expected_cash := opening_cash + total_cash_sales y desglosa net_sales sin contaminar los reportes de tesorería.",
+            keywords: ["fondo", "apertura", "cambio", "inicio", "billetes", "corte", "fondo inicial"],
+            videoRef: { stepNumber: 4, frame: 5, timestampText: "⏱️ 0:02 (Paso 4 Apertura de Caja)" },
             open: false
           },
           {
-            question: "¿Cómo se entrega el dinero al final del día a la tesorería de la iglesia?",
-            answer: "Al terminar el servicio, cada cajero realiza su <strong>Corte de Caja</strong> contando el efectivo físico de su cajón. El sistema emite un comprobante detallado que indica el fondo inicial, las ventas en efectivo y la ganancia neta. Ese comprobante se imprime o guarda digitalmente y se coloca dentro del sobre junto con el dinero para entregarlo a tesorería.",
+            id: 4,
+            question: "¿Qué pasa si un voluntario tuvo una emergencia médica o familiar y tuvo que retirarse sin hacer su corte?",
+            shortAnswer: "El Líder o Pastor ejecuta un Rescate de Contingencia registrando el dinero con un testigo y nota obligatoria.",
+            answer: "<strong>Paz y comprensión ante emergencias reales.</strong> Si un voluntario debe ausentarse con urgencia, el Líder de departamento o Pastor entra a 'Corte de Caja', cuenta el efectivo físico en presencia de un testigo y aplica 'Pre-cerrar (Contingencia)' registrando obligatoriamente el motivo de la salida.",
+            codeProof: "RPC pre_close_cash_session(p_session_id, p_cash_counted, p_notes) con verificación de rol y validación en UI :disabled=\"!contingencyNotes.trim()\". Se audita el ID del líder rescatista.",
+            keywords: ["emergencia", "urgencia", "abandono", "salida", "rescate", "contingencia", "precierre"],
+            videoRef: { stepNumber: 9, frame: 50, timestampText: "⏱️ 0:11 (Paso 9 Rescate por Contingencia)" },
             open: false
           },
           {
-            question: "¿Qué pasa si un hermano voluntario tuvo una emergencia y se fue sin hacer su corte de caja?",
-            answer: "No te preocupes en absoluto. El Líder de Departamento o Pastor puede entrar a <strong>Corte de Caja</strong>, ver las cajas que quedaron abiertas y presionar <strong>Pre-cerrar (Contingencia)</strong>. Cuenta el dinero que quedó en el cajón, agrega una nota breve (ej. <em>'Hermano Juan tuvo que salir temprano por urgencia familiar'</em>) y la caja queda cerrada y respaldada.",
+            id: 5,
+            question: "¿Por qué los libros y Biblias de la Librería no saturan la pantalla de la Cocina?",
+            shortAnswer: "Porque cuentan con Auto-Entrega activada, despachándose de inmediato en mostrador sin ingresar a KDS.",
+            answer: "<strong>Cada departamento enfocado en su labor.</strong> En la librería o venta de Biblias no se requiere cocción; la entrega es inmediata en mano al momento de pagar. El sistema despacha el pedido como entregado y la pantalla de cocina solo recibe alimentos calientes.",
+            codeProof: "profiles.auto_accept_orders = true → process_checkout asigna operational_status = 'auto_fulfilled' y status = 'completed'. kds.vue filtra únicamente operational_status = 'pending'.",
+            keywords: ["libreria", "auto-entrega", "cocina", "kds", "libros", "biblias", "despacho"],
+            videoRef: { stepNumber: 7, frame: 5, timestampText: "⏱️ 0:02 (Paso 7 Venta Directa Librería)" },
             open: false
           },
           {
-            question: "¿Por qué los libros de la Librería no aparecen en la pantalla de la Cocina?",
-            answer: "Porque la Librería tiene activado el modo de <strong>Auto-Entrega</strong>. En venta de libros, Biblias o souvenirs no se requiere preparación de alimentos, por lo que el sistema entrega la orden en la mano del cliente en el mismo segundo en que paga, manteniendo la pantalla de cocina limpia solo con platillos y bebidas.",
+            id: 6,
+            question: "¿Por qué el cajero no puede aprobar su propio corte de caja? (Regla de Dos Testigos)",
+            shortAnswer: "Por principio bíblico y financiero de Dos Testigos: quien cuenta no aprueba, requiriéndose la validación del Líder.",
+            answer: "<strong>Honestidad delante de Dios y de los hombres.</strong> Como enseña 2 Corintios 8:21, cuidamos que las cosas se hagan honestamente. El cajero realiza el conteo físico a ciegas y el Líder o Pastor compara el dinero y firma la aprobación formal para salvaguardar a ambos.",
+            codeProof: "PostgreSQL approve_cash_session valida estrictamente IF v_ctx.role NOT IN ('super_admin', 'pastor') AND (v_ctx.role != 'leader' OR department_owner_id != v_ctx.department_owner_id) THEN RAISE EXCEPTION.",
+            keywords: ["dos testigos", "aprobacion", "autorizacion", "lider", "cierre", "corte", "seguridad"],
+            videoRef: { stepNumber: 8, frame: 105, timestampText: "⏱️ 0:22 (Paso 8 Aprobación Two-Man)" },
             open: false
           },
           {
-            question: "¿Se puede cobrar desde dos computadoras o celulares usando una sola caja de dinero?",
-            answer: "<strong>¡Sí!</strong> Al momento de abrir la caja al inicio del turno, seleccionen la modalidad <strong>Caja Compartida</strong>. Ambos hermanos sumarán sus ventas a la misma caja física y al final del servicio realizarán un solo corte grupal.",
+            id: 7,
+            question: "¿Se puede cobrar desde dos teléfonos o computadoras usando un solo cajón de dinero?",
+            shortAnswer: "Sí: configurando Caja Compartida, múltiples dispositivos suman sus cobros al mismo saldo departamental.",
+            answer: "<strong>Flexibilidad total para filas rápidas.</strong> Dos o más hermanos pueden estar cobrando simultáneamente desde sus tablets o celulares compartiendo la misma gaveta física de billetes, y al final del servicio hacen un solo corte conjunto.",
+            codeProof: "RPC set_staff_independent_cash_safely con independent_cash = false asocia al cajero a la sesión activa del departamento sin crear sesiones duplicadas ni fragmentadas.",
+            keywords: ["compartida", "dos terminales", "cajon", "dispositivos", "celulares", "turnos"],
+            videoRef: { stepNumber: 9, frame: 5, timestampText: "⏱️ 0:02 (Paso 9 Caja Compartida vs Independiente)" },
+            open: false
+          },
+          {
+            id: 8,
+            question: "¿Se puede cambiar el rol o permisos de un voluntario mientras está atendiendo en caja?",
+            shortAnswer: "No: el sistema congela cambios de rol mientras haya una caja activa para blindar la responsabilidad del voluntario.",
+            answer: "<strong>Protección para el voluntario.</strong> Nadie puede alterar los permisos o configuración de un hermano mientras tiene dinero bajo su custodia. Para hacer cualquier modificación, la caja debe estar cerrada y cuadrada con anterioridad.",
+            codeProof: "change_staff_role_safely, set_staff_auto_accept_safely y set_staff_independent_cash_safely ejecutan IF has_active_cash_session_for_profile(v_target.id) THEN RAISE EXCEPTION.",
+            keywords: ["cambiar rol", "permisos", "bloqueo", "caja abierta", "congelar", "seguridad"],
+            videoRef: { stepNumber: 2, frame: 5, timestampText: "⏱️ 0:02 (Paso 2 Personal y Roles)" },
+            open: false
+          },
+          {
+            id: 9,
+            question: "¿Qué pasa si se corta la luz o el internet en el segundo exacto en que presiono 'Confirmar Cobro'?",
+            shortAnswer: "Garantía ACID: la transacción es indivisible; si se corta la conexión se ejecuta un ROLLBACK total sin órdenes huérfanas.",
+            answer: "<strong>Cero pérdida de dinero ni cobros duplicados.</strong> Gracias a la tecnología de base de datos relacional de nivel bancario, una venta se guarda al 100% o no se guarda en absoluto. Al reiniciar la pantalla, el sistema continúa exactamente cuadrado.",
+            codeProof: "process_checkout opera en transacción atómica única con bloqueo FOR UPDATE. Una pérdida de enlace previo a COMMIT dispara ROLLBACK automático en PostgreSQL.",
+            keywords: ["corte de luz", "se fue el internet", "electricidad", "conexion", "duplicado", "seguridad"],
+            videoRef: { stepNumber: 5, frame: 50, timestampText: "⏱️ 0:11 (Paso 5 Cobro en Efectivo)" },
+            open: false
+          },
+          {
+            id: 10,
+            question: "¿Qué pasa si al contar el dinero al final del día no cuadra con exactitud (sobrante o faltante)?",
+            shortAnswer: "El sistema no bloquea ni sanciona: registra la diferencia honestamente con observaciones para revisión fraterna.",
+            answer: "<strong>Honestidad ante todo.</strong> Si al final de la jornada sobran $10 o faltan $5, escribe la cantidad exacta que tienes en la mano. El sistema registrará la diferencia con una nota explicativa para que el Líder y Tesorería lo aclaren con calma y transparencia.",
+            codeProof: "pre_close_cash_session computa v_difference := p_cash_counted - v_expected_cash y la persiste en cash_closures.difference sin abortar ni generar fallos, permitiendo la auditoría.",
+            keywords: ["sobrante", "faltante", "diferencia", "descuadre", "arqueo", "conteo ciego", "dinero"],
+            videoRef: { stepNumber: 8, frame: 70, timestampText: "⏱️ 0:15 (Paso 8 Conteo Ciego y Diferencias)" },
             open: false
           }
         ],
+
+        normalizeText(str) {
+          if (!str) return '';
+          return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        },
 
         getCurrentRole() {
           return this.roles.find(r => r.id === this.activeRole) || this.roles[0];
@@ -1070,17 +1333,31 @@
             list = list.filter(s => s.roleId === this.activeRole);
           }
           if (this.searchQuery.trim() !== '') {
-            const q = this.searchQuery.toLowerCase();
+            const q = this.normalizeText(this.searchQuery);
             list = list.filter(s => 
-              s.title.toLowerCase().includes(q) ||
-              s.description.toLowerCase().includes(q) ||
-              s.category.toLowerCase().includes(q) ||
-              s.chapters.some(c => c.title.toLowerCase().includes(q) || c.detail.toLowerCase().includes(q)) ||
-              s.tags.some(t => t.toLowerCase().includes(q)) ||
-              s.tips.some(t => t.toLowerCase().includes(q))
+              this.normalizeText(s.title).includes(q) ||
+              this.normalizeText(s.description).includes(q) ||
+              this.normalizeText(s.category).includes(q) ||
+              s.chapters.some(c => this.normalizeText(c.title).includes(q) || this.normalizeText(c.detail).includes(q)) ||
+              s.tags.some(t => this.normalizeText(t).includes(q)) ||
+              s.tips.some(t => this.normalizeText(t).includes(q))
             );
           }
           return list;
+        },
+
+        get filteredFaqs() {
+          if (this.searchQuery.trim() === '') {
+            return this.faqs;
+          }
+          const q = this.normalizeText(this.searchQuery);
+          return this.faqs.filter(f => 
+            this.normalizeText(f.question).includes(q) ||
+            this.normalizeText(f.answer).includes(q) ||
+            this.normalizeText(f.shortAnswer).includes(q) ||
+            this.normalizeText(f.codeProof).includes(q) ||
+            (f.keywords && f.keywords.some(k => this.normalizeText(k).includes(q)))
+          );
         },
 
         toggleGlobalPlayback() {
@@ -1099,12 +1376,33 @@
           this.$nextTick(() => lucide.createIcons());
         },
 
+        openTheaterForStep(stepNumber, frame = 0) {
+          const step = this.steps.find(s => s.stepNumber === stepNumber);
+          if (step) {
+            this.openTheater(step, frame, 1.0);
+          }
+        },
+
         closeTheater() {
           this.theaterModal.open = false;
           window.dispatchEvent(new CustomEvent('close-theater-player'));
         },
 
+        scrollToElement(elementId) {
+          const el = document.getElementById(elementId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth' });
+          }
+        },
+
         handleGlobalKeydown(e) {
+          if (e.key === 'Escape') {
+            if (this.theaterModal.open) {
+              this.closeTheater();
+            } else if (this.searchQuery) {
+              this.searchQuery = '';
+            }
+          }
           if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             const searchInput = document.querySelector('input[x-model="searchQuery"]');
@@ -1497,6 +1795,22 @@
           const frame = parseInt(e.target.value, 10);
           this.currentFrame = frame;
           this.drawFrame(frame);
+        },
+
+        jumpToChapter(frame) {
+          this.currentFrame = Math.min(frame, this.totalFrames - 1);
+          this.drawFrame(this.currentFrame);
+          this.play();
+        },
+
+        get currentChapter() {
+          if (!this.step || !this.step.chapters) return null;
+          for (const c of this.step.chapters) {
+            if (this.currentFrame >= c.frame && this.currentFrame <= c.endFrame) {
+              return c;
+            }
+          }
+          return this.step.chapters[0] || null;
         },
 
         get currentNarration() {
