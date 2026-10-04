@@ -3,27 +3,33 @@
     <v-app>
       <v-main class="signup-container pa-0">
         <v-row no-gutters class="fill-height">
-          <!-- Left Panel: Cinematic Image -->
-          <v-col cols="12" md="6" lg="6" class="d-none d-md-flex position-relative">
-            <v-img
-              src="/images/logo_avivamiento.png"
-              class="fill-height image-kenburns"
-              cover
-            >
-              <div class="image-overlay d-flex flex-column justify-end pa-10">
-                <div class="glass-text-box mb-8">
-                  <h1 class="text-h3 font-weight-bold text-white mb-2">
-                    AVIVA CHECK
-                  </h1>
-                  <p class="text-h6 text-white font-weight-light" style="opacity: 0.9">
-                    Gestión Integral para Ministerios
-                  </p>
-                  <p class="text-body-2 text-grey-lighten-2 mt-4" style="opacity: 0.75">
-                    Registra tu iglesia y comienza a gestionar ventas, inventario y equipo en minutos.
-                  </p>
-                </div>
+          <!-- Left Panel: Cinematic Image (Matching login.vue) -->
+          <v-col cols="12" md="6" lg="6" class="d-none d-md-flex flex-column position-relative justify-center align-center pa-0" style="background-color: #050505;">
+            
+            <!-- Image spans the entire horizontal block, no cropping -->
+            <img
+              src="/images/avivacheck.png"
+              alt="Aviva Check Background"
+              style="width: 100%; max-height: 100vh; object-fit: contain; z-index: 2;"
+            />
+
+            <!-- Text Box at Bottom -->
+            <div class="position-absolute w-100 d-flex flex-column justify-end pa-10" style="bottom: 0; left: 0; z-index: 3;">
+              <div class="glass-text-box mb-8">
+                <h1 class="text-h3 font-weight-bold text-white mb-2">
+                  AVIVA CHECK
+                </h1>
+                <p class="text-h6 text-white font-weight-light" style="opacity: 0.9">
+                  Gestión Integral de departamentos y control financiero
+                </p>
+                <p class="text-body-2 text-grey-lighten-2 mt-4" style="opacity: 0.75">
+                  Registra tu iglesia y comienza a gestionar ventas, inventario y equipo en minutos.
+                </p>
               </div>
-            </v-img>
+            </div>
+            
+            <!-- Gradient Overlay (Background) -->
+            <div class="image-overlay position-absolute" style="top: 0; left: 0; width: 100%; height: 100%; z-index: 1;"></div>
           </v-col>
 
           <!-- Right Panel: Registration Form -->
@@ -141,7 +147,7 @@
                 </div>
 
                 <!-- Church Name -->
-                <div class="mb-4 input-wrapper">
+                <div class="mb-6 input-wrapper">
                   <span class="input-label">Nombre de tu Iglesia</span>
                   <v-text-field
                     v-model="form.church_name"
@@ -158,13 +164,6 @@
                     flat
                     theme="dark"
                   />
-                </div>
-
-                <!-- Slug Preview -->
-                <div v-if="churchSlug" class="slug-preview mb-6">
-                  <v-icon size="small" color="blue-lighten-3" class="mr-1">mdi-web</v-icon>
-                  <span class="text-grey-lighten-1">avivacheck.com/</span>
-                  <span class="text-blue-lighten-1 font-weight-bold">{{ churchSlug }}</span>
                 </div>
 
                 <v-btn
@@ -211,6 +210,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useSupabase } from '../composables/useSupabase'
 
 useHead({ title: 'Registrarse - Aviva Check' })
 definePageMeta({ layout: false })
@@ -228,19 +228,6 @@ const loading = ref(false)
 const error = ref('')
 const success = ref('')
 const showPassword = ref(false)
-
-// Slug auto-generado en tiempo real
-const churchSlug = computed(() => {
-  if (!form.value.church_name || form.value.church_name.length < 3) return ''
-  return form.value.church_name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-})
 
 const isFormValid = computed(() => {
   return (
@@ -265,13 +252,20 @@ async function handleSignup() {
     })
 
     if (result?.requiresLogin) {
-      success.value = 'Cuenta creada correctamente. Inicia sesiÃ³n para terminar la configuraciÃ³n.'
+      success.value = 'Cuenta creada correctamente. Inicia sesión para terminar la configuración.'
       await navigateTo('/login?registered=1')
       return
     }
 
-    // Redirigir al onboarding
-    await navigateTo('/onboarding')
+    // Completar onboarding automáticamente para permitir acceso directo al panel de administración
+    const sb = useSupabase()
+    if (sb?.rpc) {
+      await sb.rpc('complete_onboarding')
+      await auth.refreshProfile()
+    }
+
+    // Redirigir directamente al panel de gestión de personal
+    await navigateTo('/page/POS/users')
   } catch (err: any) {
     error.value = err?.message || 'Error al crear la cuenta. Intenta de nuevo.'
   } finally {
@@ -289,15 +283,6 @@ async function handleSignup() {
   position: fixed;
   top: 0;
   left: 0;
-}
-
-.image-kenburns {
-  animation: kenburns 40s infinite alternate;
-  filter: brightness(0.8) contrast(1.1);
-}
-@keyframes kenburns {
-  from { transform: scale(1); }
-  to { transform: scale(1.15); }
 }
 
 .image-overlay {
@@ -406,27 +391,26 @@ async function handleSignup() {
   opacity: 0.7;
 }
 
-.slug-preview {
-  display: flex;
-  align-items: center;
-  padding: 10px 16px;
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.15);
-  border-radius: 12px;
-  font-size: 0.9rem;
-}
-
 .epic-btn {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
   border-radius: 16px;
   letter-spacing: 0.05em;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid rgba(255,255,255,0.1);
 }
+.epic-btn:disabled,
+.epic-btn.v-btn--disabled {
+  background: rgba(30, 41, 59, 0.7) !important;
+  color: rgba(148, 163, 184, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+}
 .epic-btn:hover:not(:disabled) {
   transform: translateY(-2px) scale(1.02);
   box-shadow: 0 20px 40px -12px rgba(37, 99, 235, 0.5);
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
 }
 
 .separator {

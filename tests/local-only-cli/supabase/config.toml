@@ -1,0 +1,2 @@
+# Minimal CLI workspace: deliberately no .env, project link or remote configuration.
+project_id = "avivamiento_webpage-main"

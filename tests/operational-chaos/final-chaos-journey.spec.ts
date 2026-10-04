@@ -41,6 +41,8 @@ import {
   rejectKdsOrderUI,
 } from './ui'
 import { assertCashSessionConsistency } from './assertions'
+import { attemptAll, requireOwnedEmails, resolveOwnedOrganization } from '../../scripts/portal/lifecycle.mjs'
+import { withExactSessionRpc } from '../../scripts/portal/session-guard.mjs'
 
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3002/sistema'
 
@@ -156,7 +158,7 @@ const ACTOR_PLANS: ActorPlan[] = [
   },
 ]
 
-const FINAL_CHAOS_VIEWPORTS: CampaignViewport[] = [
+const ALL_VIEWPORTS: CampaignViewport[] = [
   { id: 'desktop', label: 'Desktop 1440x900', viewport: { width: 1440, height: 900 } },
   { id: 'laptop', label: 'Laptop 1366x768', viewport: { width: 1366, height: 768 } },
   { id: 'tablet', label: 'Tablet 768x1024', viewport: { width: 768, height: 1024 } },
@@ -164,29 +166,34 @@ const FINAL_CHAOS_VIEWPORTS: CampaignViewport[] = [
   { id: 'mobile-chico', label: 'Mobile chico 360x740', viewport: { width: 360, height: 740 } },
 ]
 
+const targetVp = process.env.TARGET_VIEWPORT?.toLowerCase()
+const FINAL_CHAOS_VIEWPORTS: CampaignViewport[] = targetVp && targetVp !== 'all'
+  ? ALL_VIEWPORTS.filter(v => v.id === targetVp)
+  : ALL_VIEWPORTS
+
 const DEPARTMENT_PLANS: DepartmentPlan[] = [
   {
     id: 'books',
-    label: 'Recursos y Libreria',
+    label: 'Recursos y Librería',
     leaderKey: 'leaderA',
     leaderAutoAccept: true,
     staff: [],
     products: [
-      { name: 'Biblia RVR Caos', price: '150' },
-      { name: 'Biblia NVI Caos', price: '170' },
-      { name: 'Devocional Semanal Caos', price: '80' },
-      { name: 'Cuaderno de Notas Caos', price: '60' },
-      { name: 'Lapicero Avivamiento Caos', price: '25' },
-      { name: 'Libro Oracion Caos', price: '120' },
-      { name: 'Libro Liderazgo Caos', price: '140' },
-      { name: 'Manual Discipulado Caos', price: '90' },
-      { name: 'Separador Biblia Caos', price: '20' },
-      { name: 'Guia Estudio Caos', price: '110' },
+      { name: 'Biblia RVR 1960', price: '150' },
+      { name: 'Biblia NVI Estudio', price: '170' },
+      { name: 'Devocional Diario', price: '80' },
+      { name: 'Cuaderno de Notas', price: '60' },
+      { name: 'Bolígrafo Ejecutivo', price: '25' },
+      { name: 'Libro Oración Eficaz', price: '120' },
+      { name: 'Libro Liderazgo Cristiano', price: '140' },
+      { name: 'Manual de Discipulado', price: '90' },
+      { name: 'Separador de Biblia', price: '20' },
+      { name: 'Guía de Estudio Bíblico', price: '110' },
     ],
   },
   {
     id: 'cafe',
-    label: 'Cafeteria y Snacks',
+    label: 'Cafetería y Snacks',
     leaderKey: 'leaderB',
     leaderAutoAccept: false,
     staff: [
@@ -195,10 +202,10 @@ const DEPARTMENT_PLANS: DepartmentPlan[] = [
       { key: 'sellerB3', roleTitle: 'Cajero', autoAccept: true },
     ],
     products: [
-      { name: 'Cafe Americano Caos', price: '45' },
-      { name: 'Pan Dulce Caos', price: '35' },
-      { name: 'Agua Natural Caos', price: '25' },
-      { name: 'Snack Integral Caos', price: '40' },
+      { name: 'Café Americano', price: '45' },
+      { name: 'Pan Dulce Artesanal', price: '35' },
+      { name: 'Agua Natural 500ml', price: '25' },
+      { name: 'Snack Integral', price: '40' },
     ],
   },
   {
@@ -211,10 +218,10 @@ const DEPARTMENT_PLANS: DepartmentPlan[] = [
       { key: 'cookC', roleTitle: 'Cocina', autoAccept: false },
     ],
     products: [
-      { name: 'Taco de Guisado Caos', price: '55' },
-      { name: 'Torta Especial Caos', price: '70' },
-      { name: 'Agua Fresca Caos', price: '30' },
-      { name: 'Platillo Comedor Caos', price: '95' },
+      { name: 'Taco de Guisado', price: '55' },
+      { name: 'Torta Especial', price: '70' },
+      { name: 'Agua Fresca del Día', price: '30' },
+      { name: 'Platillo del Comedor', price: '95' },
     ],
   },
 ]
@@ -259,9 +266,9 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
     const actors = await createActorSessions(browser)
     const users = buildUsers(runId, password)
     const slug = runId.toLowerCase().replace(/[^a-z0-9-]/g, '-')
-    const churchName = `Iglesia Final Chaos ${slug}`
-    const onboardingProduct = { name: 'Producto Inicial Final Chaos', price: '50' }
-    const smokeProduct = { name: 'Biblia Smoke Final Chaos', price: '150' }
+    const churchName = 'Comunidad Cristiana Monte de Sion'
+    const onboardingProduct = { name: 'Libro Bienvenidos', price: '50' }
+    const smokeProduct = { name: 'Biblia RVR 1960', price: '150' }
     const today = new Date().toISOString().split('T')[0]
     let orgId = ''
     let leaderDepartmentId = ''
@@ -329,12 +336,14 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
         )
       })
     } finally {
-      await captureKnownEntitiesForCleanup(supabaseAdmin, manifest, {
-        churchName,
-        emails: [users.pastor.email, users.leaderA.email],
-        productNames: [onboardingProduct.name, smokeProduct.name],
-      })
-      await cleanupJourney(manifest, supabaseAdmin, actors)
+      await attemptAll([
+        ['capture-known-entities', () => captureKnownEntitiesForCleanup(supabaseAdmin, manifest, {
+          churchName,
+          emails: [users.pastor.email, users.leaderA.email],
+          productNames: [onboardingProduct.name, smokeProduct.name],
+        })],
+        ['cleanup-known-entities', () => cleanupJourney(manifest, supabaseAdmin, actors)],
+      ])
     }
   })
 
@@ -351,8 +360,8 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
     const actors = await createActorSessions(browser, viewportCase.viewport)
     const users = buildUsers(runId, password)
     const slug = runId.toLowerCase().replace(/[^a-z0-9-]/g, '-')
-    const churchName = `Iglesia Chaos ${viewportCase.id} ${slug}`
-    const onboardingProduct = { name: 'Producto Inicial', price: '50' }
+    const churchName = 'Comunidad Cristiana Monte de Sion'
+    const onboardingProduct = { name: 'Libro Bienvenidos', price: '50' }
     const today = new Date().toISOString().split('T')[0]
 
     let orgId = ''
@@ -430,13 +439,13 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
           await createProductFromProductsUI(actors.leaderA.page, product)
         }
 
-        // Seller B1 registra snacks (prueba de permisos subalternos)
+        // El líder de Cafetería administra el catálogo; el cajero no tiene ese permiso.
         await loginUserUI(actors.leaderB.page, users.leaderB.email, users.leaderB.password, BASE_URL)
         for (const product of DEPARTMENT_PLANS.find(dept => dept.id === 'cafe')!.products) {
           await createProductFromProductsUI(actors.leaderB.page, product)
         }
 
-        // Cook C registra platillos
+        // El líder de Comedor administra los platillos; Cocina opera el KDS.
         await loginUserUI(actors.leaderC.page, users.leaderC.email, users.leaderC.password, BASE_URL)
         for (const product of DEPARTMENT_PLANS.find(dept => dept.id === 'kitchen')!.products) {
           await createProductFromProductsUI(actors.leaderC.page, product)
@@ -518,16 +527,121 @@ test.describe('Final Chaos Journey - Resurgencia Simbiotica', () => {
         )
       })
 
+      // 6. CONTINGENCIA Y RESCATE DE CAJA DESATENDIDA
+      await test.step('Contingencia y rescate de caja desatendida', async () => {
+        // Seller B1 abre una nueva caja para un turno extraordinario
+        await actors.sellerB1.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' })
+        await openCashSessionUI(actors.sellerB1.page, '50')
+
+        // Obtener el ID exacto de la sesión abierta para contingencia
+        const sellerProfile = await requireProfileByEmail(supabaseAdmin, users.sellerB1.email)
+        expect(sellerProfile.org_id).toBe(orgId)
+        expect(sellerProfile.owner_id).toBe(leaderBDepartmentId)
+        const { data: openSession, error: openError } = await supabaseAdmin
+          .from('cash_sessions')
+          .select('id')
+          .eq('org_id', orgId)
+          .eq('department_owner_id', leaderBDepartmentId)
+          .eq('opened_by', sellerProfile.id)
+          .eq('mode', 'shared')
+          .eq('status', 'open')
+          .single()
+        expect(openError).toBeNull()
+        const targetSessionId = openSession?.id
+        expect(targetSessionId).toBeTruthy()
+
+        // Realiza un cobro
+        const cafeProduct = DEPARTMENT_PLANS.find(dept => dept.id === 'cafe')!.products[0]
+        await performCheckoutUI(actors.sellerB1.page, cafeProduct.name, '100', false)
+
+        // Retiro simulado del cajero. about:blank NO demuestra una caída de red.
+        await actors.sellerB1.page.goto('about:blank')
+
+        // El Líder B entra a Corte de Caja para rescate de contingencia
+        await actors.leaderB.page.goto(`${BASE_URL}/page/POS/cashClosing`, { waitUntil: 'domcontentloaded' })
+
+        // Localizar la caja abierta en la sección "Cajas Abiertas"
+        const openSessionsHeader = actors.leaderB.page.getByText(/^Cajas Abiertas$/i)
+        await expect(openSessionsHeader).toBeVisible({ timeout: 15000 })
+
+        // Clic en Pre-cerrar (Contingencia)
+        const btnContingencia = actors.leaderB.page.getByRole('button', { name: /Pre-cerrar \(Contingencia\)/i })
+        await expect(btnContingencia).toHaveCount(1)
+        await expect(btnContingencia).toBeVisible({ timeout: 15000 })
+        await btnContingencia.click()
+
+        // Modal de contingencia
+        const modal = actors.leaderB.page.locator('.v-dialog:visible').filter({ hasText: /Pre-cierre de Contingencia/i })
+        await expect(modal).toHaveCount(1)
+        await expect(modal).toBeVisible({ timeout: 10000 })
+
+        // Efectivo contado: 50 fondo + 45 venta = 95
+        const inputContado = modal.locator('input[type="number"]')
+        await expect(inputContado).toHaveCount(1)
+        await inputContado.fill('95')
+
+        // Nota de justificación
+        const inputNota = modal.locator('textarea')
+        await expect(inputNota).toHaveCount(1)
+        await inputNota.fill('Rescate de turno: cajero se retiró por emergencia familiar.')
+
+        // Confirmar pre-cierre
+        const btnConfirmar = modal.getByRole('button', { name: /Confirmar Pre-cierre/i })
+        await expect(btnConfirmar).toBeEnabled({ timeout: 10000 })
+        await withExactSessionRpc(actors.leaderB.page, 'pre_close_cash_session', targetSessionId, () => btnConfirmar.click())
+
+        // Pasa a validación y el líder aprueba el cierre definitivo
+        await expect(actors.leaderB.page.getByText(/Cajas Pendientes de Validacion/i).first()).toBeVisible({ timeout: 20000 })
+        const btnAprobar = actors.leaderB.page.getByRole('button', { name: /Aprobar cierre/i })
+        await expect(btnAprobar).toHaveCount(1)
+        await expect(btnAprobar).toBeVisible({ timeout: 15000 })
+        await withExactSessionRpc(actors.leaderB.page, 'approve_cash_session', targetSessionId, () => btnAprobar.click())
+
+        // Aserción estricta de base de datos vinculada exactamente a targetSessionId
+        const { data: closedSession, error: sessionErr } = await supabaseAdmin
+          .from('cash_sessions')
+          .select('id,status,difference,opening_cash,total_cash_sales,cash_counted,expected_cash')
+          .eq('org_id', orgId)
+          .eq('department_owner_id', leaderBDepartmentId)
+          .eq('id', targetSessionId)
+          .single()
+
+        expect(sessionErr).toBeNull()
+        expect(closedSession?.status).toBe('closed')
+        expect(Number(closedSession?.opening_cash)).toBe(50)
+        expect(Number(closedSession?.total_cash_sales)).toBe(45)
+        expect(Number(closedSession?.cash_counted)).toBe(95)
+        expect(Number(closedSession?.expected_cash)).toBe(95)
+        expect(Number(closedSession?.difference)).toBe(0) // Cuadre matemático exacto (95 - 50 - 45 = 0)
+
+        const { data: paidOrders, error: ordersError } = await supabaseAdmin.from('orders')
+          .select('id,total').eq('org_id', orgId).eq('cash_session_id', targetSessionId)
+          .eq('financial_status', 'paid').eq('payment_method', 'cash')
+        expect(ordersError).toBeNull()
+        expect(paidOrders).toHaveLength(1)
+        expect(paidOrders.reduce((sum: number, order: any) => sum + Math.round(Number(order.total) * 100), 0)).toBe(4500)
+
+        // Explicitly demonstrate that the closed session no longer blocks opening.
+        await actors.sellerB1.page.goto(`${BASE_URL}/page/POS/pointOfSales`, { waitUntil: 'domcontentloaded' })
+        await openCashSessionUI(actors.sellerB1.page, '0')
+        const { data: nextSession, error: nextError } = await supabaseAdmin.from('cash_sessions')
+          .select('id').eq('org_id', orgId).eq('department_owner_id', leaderBDepartmentId)
+          .eq('opened_by', sellerProfile.id).eq('mode', 'shared').eq('status', 'open').single()
+        expect(nextError).toBeNull()
+        expect(nextSession?.id).toBeTruthy()
+        expect(nextSession?.id).not.toBe(targetSessionId)
+      })
+
     } finally {
       const allProductNames = DEPARTMENT_PLANS.flatMap(d => d.products.map(p => p.name))
       const allEmails = Object.values(users).map(u => u.email)
-      await captureKnownEntitiesForCleanup(supabaseAdmin, manifest, {
-        churchName,
-        emails: allEmails,
-        productNames: [onboardingProduct.name, ...allProductNames],
-      })
-      saveFinalChaosManifest(manifest)
-      await cleanupJourney(manifest, supabaseAdmin, actors)
+      await attemptAll([
+        ['capture-known-entities', () => captureKnownEntitiesForCleanup(supabaseAdmin, manifest, {
+          churchName, emails: allEmails, productNames: [onboardingProduct.name, ...allProductNames],
+        })],
+        ['save-evidence', () => saveFinalChaosManifest(manifest)],
+        ['cleanup-known-entities', () => cleanupJourney(manifest, supabaseAdmin, actors)],
+      ])
     }
   })
   }
@@ -550,9 +664,7 @@ async function createActorSessions(
 }
 
 async function closeActorSessions(actors: Record<ActorKey, ActorSession>): Promise<void> {
-  await Promise.allSettled(
-    Object.values(actors).map(actor => actor.context.close()),
-  )
+  await attemptAll(Object.values(actors).map(actor => [actor.key, () => actor.context.close()]))
 }
 
 async function cleanupJourney(
@@ -560,19 +672,11 @@ async function cleanupJourney(
   supabaseAdmin: any,
   actors: Record<ActorKey, ActorSession>,
 ): Promise<void> {
-  let cleanupError: unknown
-
-  // First close all active browser sessions to prevent background traffic/network requests
-  await closeActorSessions(actors)
-
-  try {
-    saveManifestSafe(manifest, `tests/evidence/operational-chaos/manifest_${manifest.runId}.json`)
-    await executeCleanup(manifest, supabaseAdmin)
-  } catch (err) {
-    cleanupError = err
-  }
-
-  if (cleanupError) throw cleanupError
+  await attemptAll([
+    ['close-contexts', () => closeActorSessions(actors)],
+    ['save-manifest', () => saveManifestSafe(manifest, `tests/evidence/operational-chaos/manifest_${manifest.runId}.json`)],
+    ['cleanup-recorded-ids', () => executeCleanup(manifest, supabaseAdmin)],
+  ])
 }
 
 function saveFinalChaosManifest(manifest: ChaosManifest): void {
@@ -900,18 +1004,14 @@ async function completeOnboardingUI(
   page: Page,
   data: {
     churchName: string
-    productName: string
-    productPrice: string
+    productName?: string
+    productPrice?: string
     leader: TestUser
   },
 ): Promise<void> {
   await waitForOnboardingUI(page)
 
   await page.getByPlaceholder(/Iglesia Nueva Vida/i).fill(data.churchName)
-  await page.getByRole('button', { name: /Siguiente/i }).click()
-
-  await page.getByPlaceholder(/Americano/i).fill(data.productName)
-  await page.getByPlaceholder(/25\.00/i).fill(data.productPrice)
   await page.getByRole('button', { name: /Siguiente/i }).click()
 
   await page.getByPlaceholder(/lider@iglesia\.com/i).fill(data.leader.email)
@@ -936,46 +1036,53 @@ async function requireProfileByEmail(supabaseAdmin: any, email: string): Promise
 async function captureKnownEntitiesForCleanup(
   supabaseAdmin: any,
   manifest: ChaosManifest,
-  params: { churchName: string; emails: string[]; productNames?: string[] },
+  params: { churchName: string; emails: string[]; productNames?: string[]; orgId?: string },
 ): Promise<void> {
-  const { data: org } = await supabaseAdmin
-    .from('organizations')
-    .select('id,name')
-    .eq('name', params.churchName)
-    .maybeSingle()
-
-  if (org && !manifest.organizations.some(o => o.orgId === org.id)) {
-    addOrganization(manifest, org.id, org.name)
-  }
-
+  requireOwnedEmails(manifest.runId, params.emails)
+  const profiles: any[] = []
+  const authOnlyEmails: string[] = []
   for (const email of params.emails) {
-    const { data: profile } = await supabaseAdmin
+    const { data: profile, error } = await supabaseAdmin
       .from('profiles')
       .select('id,email,role,org_id')
       .eq('email', email)
       .maybeSingle()
-
-    if (profile) {
+    if (error) throw new Error('CLEANUP_PROFILE_QUERY_FAILED')
+    if (profile) profiles.push(profile)
+    else authOnlyEmails.push(email)
+  }
+  const targetOrgId = resolveOwnedOrganization({
+    profiles,
+    knownOrgIds: manifest.organizations.map(o => o.orgId),
+    explicitOrgId: params.orgId,
+  })
+  // Register only after every returned profile agrees on ownership.
+  if (targetOrgId && !manifest.organizations.some(o => o.orgId === targetOrgId)) {
+    const { data: org, error } = await supabaseAdmin.from('organizations')
+      .select('id,name').eq('id', targetOrgId).single()
+    if (error || !org) throw new Error('CLEANUP_ORGANIZATION_QUERY_FAILED')
+    addOrganization(manifest, org.id, org.name)
+  }
+  for (const profile of profiles) {
       if (!manifest.authUsers.some(u => u.userId === profile.id)) {
         addAuthUser(manifest, profile.id, profile.email, profile.role, profile.org_id)
       }
       if (profile.org_id && !manifest.users.some(u => u.userId === profile.id)) {
         addUser(manifest, profile.id, profile.org_id, profile.email, profile.role)
       }
-    } else {
-      await captureAuthOnlyUser(supabaseAdmin, manifest, email)
-    }
   }
+  for (const email of authOnlyEmails) await captureAuthOnlyUser(supabaseAdmin, manifest, email)
 
-  if (org && params.productNames?.length) {
+  const cleanupOrgId = targetOrgId
+  if (cleanupOrgId && params.productNames?.length) {
     for (const productName of params.productNames) {
-      const { data: product } = await supabaseAdmin
+      const { data: product, error } = await supabaseAdmin
         .from('products')
         .select('id,org_id,name')
-        .eq('org_id', org.id)
+        .eq('org_id', cleanupOrgId)
         .eq('name', productName)
         .maybeSingle()
-
+      if (error) throw new Error('CLEANUP_PRODUCT_QUERY_FAILED')
       if (product && !manifest.products.some(p => p.productId === product.id)) {
         addProduct(manifest, product.id, product.org_id)
       }
@@ -988,6 +1095,7 @@ async function captureAuthOnlyUser(
   manifest: ChaosManifest,
   email: string,
 ): Promise<void> {
+  requireOwnedEmails(manifest.runId, [email])
   if (manifest.authUsers.some(u => u.email === email)) return
 
   const user = await findAuthUserByEmailForTestOnly(supabaseAdmin, email)
@@ -1056,14 +1164,14 @@ function buildUsers(runId: string, password: string): Record<ActorKey, TestUser>
   const slug = runId.toLowerCase().replace(/[^a-z0-9-]/g, '-')
 
   return {
-    pastor: { name: 'Pastor Final Chaos', email: `pastor.${slug}@gmail.com`, password },
-    leaderA: { name: 'Lider Libreria Chaos', email: `leader.books.${slug}@gmail.com`, password },
-    leaderB: { name: 'Lider Cafeteria Chaos', email: `leader.cafe.${slug}@gmail.com`, password },
-    leaderC: { name: 'Lider Comedor Chaos', email: `leader.kitchen.${slug}@gmail.com`, password },
-    sellerB1: { name: 'Vendedor Cafe 1', email: `seller.b1.${slug}@gmail.com`, password },
-    sellerB2: { name: 'Vendedor Cafe 2', email: `seller.b2.${slug}@gmail.com`, password },
-    sellerB3: { name: 'Vendedor Cafe 3', email: `seller.b3.${slug}@gmail.com`, password },
-    sellerC: { name: 'Vendedor Comedor', email: `seller.c.${slug}@gmail.com`, password },
-    cookC: { name: 'Cocinero Comedor', email: `cook.c.${slug}@gmail.com`, password },
+    pastor: { name: 'Pastor David Ramos', email: `pastor.david.${slug}@demo.avivacheck.org`, password },
+    leaderA: { name: 'Líder Daniel Soto', email: `daniel.libreria.${slug}@demo.avivacheck.org`, password },
+    leaderB: { name: 'Líder Marcos Peña', email: `marcos.cafeteria.${slug}@demo.avivacheck.org`, password },
+    leaderC: { name: 'Líder Samuel Castro', email: `samuel.comedor.${slug}@demo.avivacheck.org`, password },
+    sellerB1: { name: 'Cajera Sofía Mendoza', email: `sofia.cajero.${slug}@demo.avivacheck.org`, password },
+    sellerB2: { name: 'Cajero Mateo Vega', email: `mateo.cajero.${slug}@demo.avivacheck.org`, password },
+    sellerB3: { name: 'Cajero Lucas Ortiz', email: `lucas.cajero.${slug}@demo.avivacheck.org`, password },
+    sellerC: { name: 'Cajero Isaac Díaz', email: `isaac.cajero.${slug}@demo.avivacheck.org`, password },
+    cookC: { name: 'Cocinero Andrés Cruz', email: `andres.cocina.${slug}@demo.avivacheck.org`, password },
   }
 }

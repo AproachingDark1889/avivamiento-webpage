@@ -94,11 +94,17 @@ export interface OrderWithItems extends Order {
 export type CashSessionMode = 'shared' | 'independent'
 export type CashSessionStatus = 'open' | 'pending_validation' | 'closed'
 
+export interface CashSessionCashierProfile {
+  display_name?: string | null
+  email?: string | null
+}
+
 export interface CashSession {
   id: string
   org_id: string
   department_owner_id: string
   cashier_id?: string | null
+  cashier?: CashSessionCashierProfile | null
   mode: CashSessionMode
   status: CashSessionStatus
   opened_by: string

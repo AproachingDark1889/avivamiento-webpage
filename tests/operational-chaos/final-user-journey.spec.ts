@@ -303,18 +303,14 @@ async function completeOnboardingUI(
   page: Page,
   data: {
     churchName: string
-    productName: string
-    productPrice: string
+    productName?: string
+    productPrice?: string
     leader: { name: string; email: string; password: string }
   },
 ): Promise<void> {
   await page.waitForURL(url => url.toString().includes('/onboarding'), { timeout: 30000 })
 
   await page.getByPlaceholder(/Iglesia Nueva Vida/i).fill(data.churchName)
-  await page.getByRole('button', { name: /Siguiente/i }).click()
-
-  await page.getByPlaceholder(/Americano/i).fill(data.productName)
-  await page.getByPlaceholder(/25\.00/i).fill(data.productPrice)
   await page.getByRole('button', { name: /Siguiente/i }).click()
 
   await page.getByPlaceholder(/lider@iglesia\.com/i).fill(data.leader.email)

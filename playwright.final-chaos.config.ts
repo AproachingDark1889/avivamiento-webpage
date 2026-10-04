@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
+
 export default defineConfig({
   testDir: './tests',
   testMatch: /operational-chaos\/final-chaos-journey\.spec\.ts/,
@@ -24,6 +25,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
+
+  webServer: {
+    command: 'npm run dev',
+    port: 3002,
+    reuseExistingServer: true,
+    timeout: 120000,
+  },
 
   outputDir: 'tests/evidence/final-chaos',
 })

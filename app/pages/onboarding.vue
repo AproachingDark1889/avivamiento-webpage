@@ -12,11 +12,11 @@
                 <span class="text-h6 font-weight-bold text-white">Configuración Inicial</span>
                 <v-spacer />
                 <v-chip size="small" color="blue" variant="tonal" class="font-weight-bold">
-                  Paso {{ currentStep }} de 3
+                  Paso {{ currentStep }} de 2
                 </v-chip>
               </div>
               <v-progress-linear
-                :model-value="(currentStep / 3) * 100"
+                :model-value="(currentStep / 2) * 100"
                 color="blue"
                 height="4"
                 rounded
@@ -92,98 +92,9 @@
               </div>
 
               <!-- ═══════════════════════════════════════ -->
-              <!-- STEP 2: Crea tu primer producto        -->
+              <!-- STEP 2: Registra a tu primer líder      -->
               <!-- ═══════════════════════════════════════ -->
               <div v-if="currentStep === 2">
-                <div class="step-header mb-6">
-                  <div class="step-icon-box green">
-                    <v-icon size="32" color="white">mdi-package-variant-plus</v-icon>
-                  </div>
-                  <div>
-                    <h3 class="text-h5 font-weight-black text-white">Crea tu Primer Producto</h3>
-                    <p class="text-body-2 text-grey-lighten-1 mt-1">Para comenzar a vender, crea al menos un producto</p>
-                  </div>
-                </div>
-
-                <div class="mb-4">
-                  <span class="field-label">Nombre del Producto</span>
-                  <v-text-field
-                    v-model="productName"
-                    placeholder="Café Americano"
-                    variant="solo"
-                    bg-color="rgba(0,0,0,0.3)"
-                    color="white"
-                    prepend-inner-icon="mdi-tag"
-                    class="epic-input"
-                    hide-details
-                    flat
-                    theme="dark"
-                  />
-                </div>
-
-                <div class="mb-4">
-                  <span class="field-label">Precio (MXN)</span>
-                  <v-text-field
-                    v-model.number="productPrice"
-                    placeholder="25.00"
-                    type="number"
-                    min="0"
-                    step="0.50"
-                    variant="solo"
-                    bg-color="rgba(0,0,0,0.3)"
-                    color="white"
-                    prepend-inner-icon="mdi-currency-usd"
-                    class="epic-input"
-                    hide-details
-                    flat
-                    theme="dark"
-                  />
-                </div>
-
-                <div>
-                  <span class="field-label">Categoría</span>
-                  <v-select
-                    v-model="productCategory"
-                    :items="categoryOptions"
-                    item-title="title"
-                    item-value="value"
-                    variant="solo"
-                    bg-color="rgba(0,0,0,0.3)"
-                    color="white"
-                    prepend-inner-icon="mdi-shape"
-                    class="epic-input"
-                    hide-details
-                    flat
-                    theme="dark"
-                  />
-                </div>
-
-                <!-- Product Preview -->
-                <v-card
-                  v-if="productName && productPrice > 0"
-                  variant="outlined"
-                  class="mt-5 pa-4"
-                  rounded="xl"
-                  style="border-color: rgba(76, 175, 80, 0.3); background: rgba(76, 175, 80, 0.05)"
-                >
-                  <div class="d-flex align-center">
-                    <v-avatar color="green" variant="tonal" size="40" class="mr-3">
-                      <v-icon>mdi-package-variant</v-icon>
-                    </v-avatar>
-                    <div>
-                      <div class="text-body-1 font-weight-bold text-white">{{ productName }}</div>
-                      <div class="text-caption text-grey-lighten-1">{{ productCategory }} · {{ formatMoney(productPrice) }}</div>
-                    </div>
-                    <v-spacer />
-                    <v-icon color="green-lighten-2">mdi-check-circle</v-icon>
-                  </div>
-                </v-card>
-              </div>
-
-              <!-- ═══════════════════════════════════════ -->
-              <!-- STEP 3: Registra a tu primer líder      -->
-              <!-- ═══════════════════════════════════════ -->
-              <div v-if="currentStep === 3">
                 <div class="step-header mb-6">
                   <div class="step-icon-box purple">
                     <v-icon size="32" color="white">mdi-account-plus</v-icon>
@@ -279,9 +190,9 @@
 
               <v-spacer />
 
-              <!-- Skip (solo Step 3) -->
+              <!-- Skip (Step 2) -->
               <v-btn
-                v-if="currentStep === 3"
+                v-if="currentStep === 2"
                 variant="text"
                 color="grey"
                 class="mr-3"
@@ -292,7 +203,7 @@
               </v-btn>
 
               <v-btn
-                v-if="currentStep < 3"
+                v-if="currentStep < 2"
                 color="blue"
                 variant="flat"
                 append-icon="mdi-arrow-right"
@@ -307,13 +218,13 @@
               </v-btn>
 
               <v-btn
-                v-if="currentStep === 3"
+                v-if="currentStep === 2"
                 color="green"
                 variant="flat"
                 append-icon="mdi-check"
                 @click="finishWithLeader"
                 :loading="loading"
-                :disabled="currentStep === 3 && leaderEmail.length > 0 && (!leaderName || !leaderPassword)"
+                :disabled="currentStep === 2 && leaderEmail.length > 0 && (!leaderName || !leaderPassword)"
                 size="large"
                 class="font-weight-bold"
                 rounded="lg"
@@ -337,7 +248,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useSupabase } from '../composables/useSupabase'
-import { formatMoney } from '../utils/format'
 
 useHead({ title: 'Configuración Inicial - Aviva Check' })
 definePageMeta({ layout: false })
@@ -353,25 +263,7 @@ const orgName = ref('')
 const phone = ref('')
 const address = ref('')
 
-// Step 2 data
-const productName = ref('')
-const productPrice = ref(0)
-const productCategory = ref('food')
-
-const categoryOptions = [
-  { title: 'Tacos', value: 'tacos' },
-  { title: 'Hamburguesas', value: 'burgers' },
-  { title: 'Pizzas', value: 'pizza' },
-  { title: 'Snacks / Papas', value: 'snacks' },
-  { title: 'Platillos / Otros', value: 'food' },
-  { title: 'Bebidas / Refrescos', value: 'drink' },
-  { title: 'Cafetería', value: 'coffee' },
-  { title: 'Postres / Pan', value: 'dessert' },
-  { title: 'Libros', value: 'book' },
-  { title: 'Varios', value: 'other' },
-]
-
-// Step 3 data
+// Step 2 data (Líder)
 const leaderEmail = ref('')
 const leaderName = ref('')
 const leaderPassword = ref('')
@@ -382,8 +274,6 @@ const canProceed = computed(() => {
     case 1:
       return orgName.value.length >= 3
     case 2:
-      return productName.value.length > 0 && productPrice.value > 0
-    case 3:
       return true // skippable
     default:
       return false
@@ -436,10 +326,6 @@ async function nextStep() {
       await saveOrgConfig()
     }
 
-    if (currentStep.value === 2) {
-      await createProduct()
-    }
-
     currentStep.value++
   } catch (e: any) {
     error.value = e?.message ?? String(e)
@@ -463,27 +349,7 @@ async function saveOrgConfig() {
   if (updateError) throw updateError
 }
 
-// Step 2: Create first product
-async function createProduct() {
-  const sb = getSupabase()
-  if (!sb?.from || !auth.profile?.org_id) return
-  if (!auth.profile?.id) throw new Error('No se pudo resolver el departamento del pastor')
-
-  const { error: insertError } = await sb
-    .from('products')
-    .insert({
-      name: productName.value.trim(),
-      price: productPrice.value,
-      category: productCategory.value,
-      org_id: auth.profile.org_id,
-      department_owner_id: auth.profile.id,
-      active: true,
-    })
-
-  if (insertError) throw insertError
-}
-
-// Step 3: Create leader (optional) — usa mismo patrón seguro que users.vue
+// Step 2: Create leader (optional) — usa mismo patrón seguro que users.vue
 async function createLeader() {
   if (!leaderEmail.value || !leaderName.value || !leaderPassword.value) return
 
@@ -606,10 +472,6 @@ async function finishOnboarding() {
 .step-icon-box.blue {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.15));
   border: 1px solid rgba(59, 130, 246, 0.3);
-}
-.step-icon-box.green {
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(56, 142, 60, 0.15));
-  border: 1px solid rgba(76, 175, 80, 0.3);
 }
 .step-icon-box.purple {
   background: linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(103, 58, 183, 0.15));

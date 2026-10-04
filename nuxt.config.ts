@@ -1,6 +1,11 @@
 // nuxt.config.ts - AvivaCheck POS
 import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 
+const localTraining = process.env.AVC_LOCAL_TEST === '1'
+if (localTraining && process.env.SUPABASE_URL !== 'http://127.0.0.1:54321') {
+  throw new Error('LOCAL_TRAINING_REQUIRES_LOOPBACK_SUPABASE')
+}
+
 export default defineNuxtConfig({
   compatibilityDate: '2024-12-08',
 
@@ -16,6 +21,7 @@ export default defineNuxtConfig({
     public: {
       supabaseUrl: process.env.SUPABASE_URL,
       supabaseKey: process.env.SUPABASE_ANON_KEY,
+      localTraining,
     }
   },
   // -------------------------------------------------------
@@ -298,10 +304,10 @@ export default defineNuxtConfig({
 
   devServer: {
     port: 3002,
-    host: '0.0.0.0',
+    host: localTraining ? '127.0.0.1' : '0.0.0.0',
   },
 
   devtools: {
-    enabled: process.env.NODE_ENV === 'development',
+    enabled: !localTraining && process.env.NODE_ENV === 'development',
   },
 })

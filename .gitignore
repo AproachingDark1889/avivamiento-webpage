@@ -35,3 +35,5 @@ tests/evidence/
 
 # Supabase local CLI state
 supabase/.temp/
+# Training and pilot artifacts (runs, raw videos, local candidates)
+/artifacts/

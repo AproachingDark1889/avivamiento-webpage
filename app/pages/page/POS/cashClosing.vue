@@ -201,6 +201,10 @@
                 <v-spacer />
                 <span class="text-caption text-medium-emphasis">{{ formatDateTime(session.preclosed_at || session.opened_at) }}</span>
               </div>
+              <div v-if="session.mode === 'independent'" class="d-flex justify-space-between text-body-2 mb-1">
+                <span>Cajero</span>
+                <strong>{{ session.cashier?.display_name || session.cashier?.email || 'Sin asignar' }}</strong>
+              </div>
               <div class="d-flex justify-space-between text-body-2 mb-1">
                 <span>Ventas</span>
                 <strong>{{ money(session.sales_total) }}</strong>
@@ -540,7 +544,7 @@ async function loadPendingSessions() {
 
   let query = sb
     .from('cash_sessions')
-    .select('*')
+    .select('*, cashier:profiles!cash_sessions_cashier_id_fkey(display_name, email)')
     .eq('status', 'pending_validation')
     .order('preclosed_at', { ascending: false })
 

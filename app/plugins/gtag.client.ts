@@ -3,6 +3,7 @@
 // Para obtenerlo: https://tagmanager.google.com → Container ID
 
 export default defineNuxtPlugin(() => {
+  if (useRuntimeConfig().public.localTraining === true) return
   const GTM_ID = 'GTM-NP63RVGW'
 
   if (typeof window !== 'undefined') {
